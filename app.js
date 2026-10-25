@@ -131,6 +131,19 @@ function initPlan() {
 
   $("#btn-edit-profil").addEventListener("click", () => zeige("view-setup"));
   $("#btn-rechnen").addEventListener("click", () => { berechnenUndZeigen(); });
+  $("#btn-zurueck-plan").addEventListener("click", () => zeige("view-plan"));
+  $("#btn-von-vorn").addEventListener("click", () => neuerAbend());
+}
+
+// "Neuer Abend": Abendeinstellungen zurueck auf Default, wieder zum Plan
+function neuerAbend() {
+  state.abend = { getraenke: ["bier"], start: "", abendMin: 240, empfind: state.abend.empfind, fit: "" };
+  window.document.querySelectorAll(".getraenk").forEach((b) => b.setAttribute("aria-checked", String(b.dataset.id === "bier")));
+  $("#inp-start").value = defaultStart();
+  $("#inp-fit").value = "";
+  for (const b of $("#seg-abend").querySelectorAll("button")) b.setAttribute("aria-checked", String(b.dataset.v === "240"));
+  speichern();
+  zeige("view-plan");
 }
 
 function defaultStart() {
@@ -195,7 +208,8 @@ function berechnenUndZeigen() {
     const misch = counts.length > 1;
     $("#out-budget").innerHTML = '<span class="cnt">0</span> ' + (misch ? "Drinks" : "&times; " + plan.items[0].getraenk.name);
     countUp($("#out-budget .cnt"), plan.anzahl, 700);
-    $("#out-budget-sub").innerHTML = misch ? counts.join(" &middot; ") + " - und du bist morgen frisch." : "und du bist morgen frisch.";
+    const erster = minZuHM(start + Math.round(plan.items[0].t * 60));
+    $("#out-budget-sub").innerHTML = (misch ? counts.join(" &middot; ") + " - d" : "D") + "ein erster um " + erster + " Uhr, und du bist morgen frisch.";
     const peakEl = $("#out-peak"), grammEl = $("#out-gramm");
     peakEl.innerHTML = "0&permil;"; grammEl.textContent = "0 g";
     countUp(peakEl, plan.peakPromille, 900, (v) => v.toFixed(1).replace(".", ",") + "&permil;");

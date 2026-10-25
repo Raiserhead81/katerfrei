@@ -84,8 +84,21 @@ setTimeout(() => {
   setTimeout(() => {
     const ok = window.document.querySelectorAll("#plan-liste li").length >= 0; // stuerzt nicht, zeigt irgendetwas
     check("Kurz-Abend-Fall laeuft ohne Crash", ok && !$("#view-ergebnis").hidden);
+
+  // 5) Regression: Neuer-Abend-Button + Sub-Text mit erstem Drink
+  klick($("#btn-von-vorn"));
+  check("Neuer Abend: zurueck zum Plan", !$("#view-plan").hidden && $("#view-ergebnis").hidden);
+  check("Neuer Abend: nur Bier gewaehlt, Fit-Feld leer",
+    window.document.querySelector('.getraenk[data-id="bier"]').getAttribute("aria-checked") === "true" &&
+    !$("#inp-fit").value);
+  klick($("#btn-rechnen"));
+  setTimeout(() => {
+    check("Sub nennt ersten Drink (erster um)", $("#out-budget-sub").textContent.toLowerCase().includes("erster um"));
+    klick($("#btn-zurueck-plan"));
+    check("Aendern-Button wechselt zum Plan", !$("#view-plan").hidden);
     console.log(fehler ? fehler + " FEHLER" : "ALLE PASS");
     process.exit(fehler ? 1 : 0);
+  }, 120);
   }, 100);
 }, 100);
 }, 100);
