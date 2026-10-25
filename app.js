@@ -133,9 +133,24 @@ function initPlan() {
   $("#btn-rechnen").addEventListener("click", () => { berechnenUndZeigen(); });
   $("#btn-zurueck-plan").addEventListener("click", () => zeige("view-plan"));
   $("#btn-von-vorn").addEventListener("click", () => neuerAbend());
+  $("#btn-share").addEventListener("click", teilePlan);
 }
 
 // "Neuer Abend": Abendeinstellungen zurueck auf Default, wieder zum Plan
+// Teilen: Web Share API, Fallback Clipboard
+function teilePlan() {
+  const budget = $("#out-budget").textContent.replace(/\s+/g, " ").trim();
+  const rang = $("#rang-badge").textContent;
+  const text = budget + " - Rang: " + rang + ". Rechne deinen Abend selbst: https://katerfrei.gemivo.de";
+  const btn = $("#btn-share");
+  const fertig = () => { const alt = btn.textContent; btn.textContent = "Kopiert!"; setTimeout(() => { btn.textContent = alt; }, 1600); };
+  if (navigator.share) {
+    navigator.share({ title: "Katerfrei", text }).catch(() => {});
+  } else if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(text).then(fertig).catch(() => {});
+  }
+}
+
 function neuerAbend() {
   state.abend = { getraenke: ["bier"], start: "", abendMin: 240, empfind: state.abend.empfind, fit: "" };
   window.document.querySelectorAll(".getraenk").forEach((b) => b.setAttribute("aria-checked", String(b.dataset.id === "bier")));
@@ -185,6 +200,7 @@ function berechnenUndZeigen() {
 
   zeige("view-ergebnis");
   glaeserBuehne(plan);
+  setzeRang(plan);
   wissenschaftFuellen(plan, getraenke, empfind, { start, trink, schlafMin, fitMin });
   if (!plan && schlafMin < 30) {
     $("#out-budget").innerHTML = "Zu knapp.";
@@ -345,6 +361,63 @@ function glaeserBuehne(plan) {
 }
 
 // ---------- Wissenschaft: Herleitung mit eingesetzten Werten ----------
+// ---------- Epik: Rang + Spruch + Konfetti ----------
+const RAENGE = [
+  { max: 0.5, name: "Eiskalter Feldherr", sprueche: ["Der Kater wartet draussen im Regen.", "Wissenschaft 1, Kater 0.", "Du planst wie ein General und trinkst wie ein Kenner."] },
+  { max: 0.8, name: "Feierabend-Stratege", sprueche: ["Trinken wie ein Stratege, schlafen wie ein Stein.", "Promille im Griff, Ehre unversehrt.", "Der Abend gehoert dir - und morgen auch."] },
+  { max: 1.01, name: "Grenzgaenger mit Stil", sprueche: ["Knapp am Limit - aber mit Plan und Haltung.", "Volle Kraft, klare Rechnung.", "Du tanzt auf der Klinge und landest auf den Fuessen."] },
+];
+const RANG_NUECHTERN = { name: "Ehrenwacher Nuechterner", sprueche: ["Heute siegt der Verstand - staerker als jeder Drink.", "Null Promille, volle Ehre.", "Der klueste Drink ist manchmal kein Drink."] };
+
+function setzeRang(plan) {
+  const badge = $("#rang-badge"), spruch = $("#rang-spruch"), zeile = $("#out-rang");
+  if (!plan) {
+    badge.textContent = RANG_NUECHTERN.name;
+    spruch.textContent = RANG_NUECHTERN.sprueche[Math.floor(Math.random() * RANG_NUECHTERN.sprueche.length)];
+  } else {
+    const ratio = plan.peakPromille / plan.limitPromille;
+    const rang = RAENGE.find((r) => ratio < r.max) || RAENGE[RAENGE.length - 1];
+    badge.textContent = rang.name;
+    spruch.textContent = rang.sprueche[Math.floor(Math.random() * rang.sprueche.length)];
+    starteKonfetti();
+  }
+  zeile.hidden = false;
+}
+
+function starteKonfetti() {
+  const cv = $("#konfetti");
+  const ctx = cv.getContext ? cv.getContext("2d") : null;
+  if (!ctx) return;
+  const el = cv.parentElement || {};
+  const breit = el.offsetWidth || 0, hoch = el.offsetHeight || 0;
+  if (!breit || !hoch) return; // unsichtbar (Tests/WebView-Vorlauf) -> kein Konfetti
+  const dpr = window.devicePixelRatio || 1;
+  cv.width = breit * dpr; cv.height = Math.min(340, Math.round(hoch * 0.5)) * dpr;
+  cv.style.height = Math.min(340, Math.round(hoch * 0.5)) + "px";
+  const farben = Object.values(GLAS_FARBEN);
+  const teile = Array.from({ length: 70 }, () => ({
+    x: Math.random() * cv.width, y: -20 - Math.random() * cv.height * 0.3,
+    w: (5 + Math.random() * 5) * dpr, h: (8 + Math.random() * 6) * dpr,
+    vy: (1.6 + Math.random() * 2.2) * dpr, vx: (Math.random() - 0.5) * 1.4 * dpr,
+    rot: Math.random() * Math.PI, vr: (Math.random() - 0.5) * 0.2,
+    farbe: farben[Math.floor(Math.random() * farben.length)],
+  }));
+  const t0 = performance.now();
+  const tick = (t) => {
+    const vergh = (t - t0) / 1900;
+    ctx.clearRect(0, 0, cv.width, cv.height);
+    ctx.globalAlpha = Math.max(0, 1 - Math.max(0, vergh - 0.6) / 0.4);
+    for (const p of teile) {
+      p.x += p.vx; p.y += p.vy; p.rot += p.vr;
+      ctx.save(); ctx.translate(p.x, p.y); ctx.rotate(p.rot);
+      ctx.fillStyle = p.farbe; ctx.fillRect(-p.w / 2, -p.h / 2, p.w, p.h);
+      ctx.restore();
+    }
+    if (vergh < 1) requestAnimationFrame(tick); else ctx.clearRect(0, 0, cv.width, cv.height);
+  };
+  requestAnimationFrame(tick);
+}
+
 function wissenschaftFuellen(plan, getraenke, empfind, dauer) {
   const p = state.profil;
   const r = verteilFaktor(p.geschlecht);

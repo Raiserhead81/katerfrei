@@ -96,9 +96,11 @@
   <!-- ============ SCHRITT 3: ERGEBNIS ============ -->
   <section id="view-ergebnis" class="view" hidden>
     <p class="praefix">Dein Budget heute Abend <span class="stempel" id="stempel" hidden>Prost!</span></p>
+    <canvas id="konfetti" aria-hidden="true"></canvas>
     <div class="glas-buehne" id="glas-buehne" aria-hidden="true"></div>
     <h1 class="zahl-linie" id="out-budget">3 &times; Bier</h1>
     <p class="sub" id="out-budget-sub">und du bist morgen frisch.</p>
+    <p class="rang-zeile" id="out-rang" hidden><span class="rang-badge" id="rang-badge"></span><span class="rang-spruch" id="rang-spruch"></span></p>
 
     <div class="kennzahlen">
       <div class="kenn"><span class="k-wert" id="out-peak">0,5&permil;</span><span class="k-label">Promille-Hoehepunkt</span></div>
@@ -151,6 +153,7 @@
 
     <div class="btn-row">
       <button class="btn-ghost" id="btn-zurueck-plan">Aendern</button>
+      <button class="btn-ghost" id="btn-share">Stolz teilen</button>
       <button class="btn-weiter" id="btn-von-vorn">Neuer Abend</button>
     </div>
 

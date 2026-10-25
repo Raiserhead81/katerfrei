@@ -282,3 +282,11 @@ body::before {
 .quellen li { font-size: 12px; color: var(--muted); padding: 5px 0 5px 18px; position: relative; line-height: 1.5; }
 .quellen li::before { content: ""; position: absolute; left: 0; top: 11px; width: 7px; height: 7px; border: 1.5px solid var(--amber-dunkel); border-radius: 50%; }
 .wis-hinweis { border-top: 1px dashed var(--line); padding-top: 12px; font-style: italic; }
+
+/* ---------- Epik: Rang, Konfetti, Buehne ---------- */
+#view-ergebnis { position: relative; }
+#konfetti { position: absolute; top: 0; left: 0; width: 100%; height: 0; pointer-events: none; z-index: 5; }
+.rang-zeile { display: flex; align-items: center; justify-content: center; gap: 10px; flex-wrap: wrap; margin: 4px 0 10px; }
+.rang-badge { font-family: var(--mono); font-size: 12px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--amber); border: 1.5px solid var(--amber-dunkel); border-radius: 999px; padding: 5px 14px; background: rgba(242, 163, 60, 0.08); }
+.rang-spruch { font-size: 13px; color: var(--muted); font-style: italic; }
+#btn-share { animation: none; }
