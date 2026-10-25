@@ -40,13 +40,19 @@ Ein Plan gilt nur, wenn ALLES gleichzeitig gilt:
    die beiden Haupttreiber des Katers. (Begrifflich gestuetzt auf
    Verster et al. 2010, Curr Drug Abuse Rev; die g/kg-Zahlen selbst sind
    konservative Setzungen dieser App, keine Laborwerte.)
-3. **Beim Aufwachen <= 0,05 Promille** (ausgeschlafen = nuechtern):
-   Restalkohol beim Aufwachen ist Kater-Garantie (Verster et al. 2010).
+3. **Spaetestens 5 h nach dem letzten Drink <= 0,05 Promille**: niemand
+   weiss um 19 Uhr, wann er ins Bett faellt - deshalb rechnet die App mit
+   einer Worst-Case-Nacht (SCHLAF_ANNAHME_H = 5) und sagt dir stattdessen,
+   um wie viel Uhr du garantiert nuechtern bist. Restalkohol beim
+   Aufwachen ist Kater-Garantie (Verster et al. 2010).
 
 ### 4. Der Solver
 `planBerechnen()` probiert Getraenkeanzahlen n = 1..25 gleichmaessig ueber
 die Trinkzeit verteilt und waehlt das groesste n, das alle drei Grenzen
-haelt. Greedy, deterministisch, in <1 ms durch.
+haelt. Getraenke-Auswahl ist ein MIX: mehrere Getraenke werden
+round-robin ueber den Abend verteilt (Bier, Wein, Bier, ...), jedes mit
+seinem eigenen Gramm-Wert im Kurvenmodell. Greedy, deterministisch,
+in <1 ms durch.
 
 ### 5. Wasser-Regel
 Pro 10 g Ethanol ~100 ml zusaetzlicher Fluessigkeitsverlust

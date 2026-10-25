@@ -2,11 +2,11 @@
 "use strict";
 
 const $ = (sel) => document.querySelector(sel);
-const LS_KEY = "katerfrei-v1";
+const LS_KEY = "katerfrei-v2";
 
 const state = {
   profil: { geschlecht: null, alter: 30, gewicht: 75 },
-  abend: { getraenk: "bier", start: "", schlafen: "23:30", aufwachen: "07:00", empfind: "normal" },
+  abend: { getraenke: ["bier"], start: "", abendMin: 240, empfind: "normal" },
 };
 
 // ---------- Getraenk-Icons (inline SVG) ----------
@@ -25,7 +25,9 @@ function laden() {
     if (!raw) return;
     const s = JSON.parse(raw);
     if (s.profil) Object.assign(state.profil, s.profil);
-    if (s.abend) Object.assign(state.abend, s.abend);
+    if (s.abend && Array.isArray(s.abend.getraenke) && s.abend.getraenke.length) {
+      Object.assign(state.abend, s.abend);
+    }
   } catch (e) { /* egal */ }
 }
 function speichern() {
@@ -97,27 +99,29 @@ function initPlan() {
     b.type = "button";
     b.className = "getraenk";
     b.dataset.id = g.id;
-    b.setAttribute("role", "radio");
-    b.setAttribute("aria-checked", String(g.id === state.abend.getraenk));
+    b.setAttribute("role", "checkbox");
+    b.setAttribute("aria-checked", String(state.abend.getraenke.includes(g.id)));
     b.innerHTML = ICONS[ICON_ZUORDNUNG[g.id]] + '<span class="g-name">' + g.name + "</span>" + '<span class="g-detail">' + g.detail + "</span>";
     liste.appendChild(b);
   }
   liste.addEventListener("click", (e) => {
     const b = e.target.closest(".getraenk");
     if (!b) return;
-    state.abend.getraenk = b.dataset.id;
-    for (const el of liste.children) el.setAttribute("aria-checked", String(el === b));
+    const id = b.dataset.id;
+    const aktiv = state.abend.getraenke.includes(id);
+    if (aktiv && state.abend.getraenke.length === 1) return; // mind. 1 bleibt an
+    state.abend.getraenke = aktiv
+      ? state.abend.getraenke.filter((x) => x !== id)
+      : state.abend.getraenke.concat(id);
+    b.setAttribute("aria-checked", String(!aktiv));
     speichern();
   });
   $("#inp-start").value = state.abend.start || defaultStart();
-  $("#inp-schlafen").value = state.abend.schlafen;
-  $("#inp-aufwachen").value = state.abend.aufwachen;
-  for (const id of ["inp-start", "inp-schlafen", "inp-aufwachen"]) {
-    $("#" + id).addEventListener("change", (e) => {
-      state.abend[id.replace("inp-", "")] = e.target.value;
-      speichern();
-    });
-  }
+  $("#inp-start").addEventListener("change", (e) => {
+    state.abend.start = e.target.value;
+    speichern();
+  });
+  segmentLogik("#seg-abend", String(state.abend.abendMin), (v) => { state.abend.abendMin = +v; speichern(); });
   segmentLogik("#seg-empfind", state.abend.empfind, (v) => { state.abend.empfind = v; speichern(); });
 
   $("#btn-edit-profil").addEventListener("click", () => zeige("view-setup"));
@@ -136,70 +140,70 @@ function minZuHM(min) { min = ((min % 1440) + 1440) % 1440; return String(Math.f
 
 function abendDauerMin() {
   const start = hmZuMin($("#inp-start").value);
-  const schlaf = hmZuMin($("#inp-schlafen").value);
-  const wake = hmZuMin($("#inp-aufwachen").value);
-  let trink = schlaf - start;
-  if (trink <= 0) trink += 1440; // ueber Mitternacht trinken
-  let schlafDauer = wake - schlaf;
-  if (schlafDauer <= 0) schlafDauer += 1440;
-  return { start, trink, schlafDauer };
+  return { start, trink: state.abend.abendMin };
 }
 
 // ---------- Berechnung + Ergebnis ----------
 function berechnenUndZeigen() {
-  const getraenk = GETRAENKE.find((g) => g.id === state.abend.getraenk);
+  const getraenke = GETRAENKE.filter((g) => state.abend.getraenke.includes(g.id));
   const empfind = EMPFINDLICHKEIT.find((e) => e.id === state.abend.empfind);
-  const { start, trink, schlafDauer } = abendDauerMin();
+  const { start, trink } = abendDauerMin();
   const plan = planBerechnen({
     geschlecht: state.profil.geschlecht,
     gewicht: state.profil.gewicht,
     trinkMin: trink,
-    schlafMin: schlafDauer,
-    getraenk,
+    getraenke,
     peakLimit: empfind.peak,
     grammGesamtLimit: state.profil.gewicht * empfind.gProKg,
   });
 
   zeige("view-ergebnis");
-  glaeserBuehne(plan, getraenk);
-  wissenschaftFuellen(plan, getraenk, empfind);
+  glaeserBuehne(plan);
+  wissenschaftFuellen(plan, getraenke, empfind);
   if (!plan) {
     $("#out-budget").innerHTML = "Heiter bleiben.";
-    $("#out-budget-sub").textContent = "Mit so wenig Schlaf und dieser Zeit passt kein Drink rein, ohne morgen zu leiden.";
-    $("#out-peak").textContent = "-"; $("#out-gramm").textContent = "0 g"; $("#out-wake").textContent = minZuHM(start + trink + schlafDauer);
+    $("#out-budget-sub").textContent = "So eng wie heute Abend passt kein Drink rein, ohne morgen zu leiden.";
+    $("#out-peak").textContent = "-"; $("#out-gramm").textContent = "0 g"; $("#out-wake").textContent = "--:--";
     $("#plan-liste").innerHTML = "";
     $("#out-stopp").innerHTML = "<b>Ohne Alkohol</b> wird das morgen ein guter Morgen.";
   } else {
-    const singular = plan.anzahl === 1;
-    $("#out-budget").innerHTML = '<span class="cnt">0</span> &times; ' + getraenk.name;
+    // Budget-Zeile: "3 &times; Bier" oder "4 Drinks" + Mix-Aufschloesselung
+    const counts = [];
+    for (const g of getraenke) {
+      const c = plan.items.filter((x) => x.getraenk.id === g.id).length;
+      if (c) counts.push(c + " &times; " + g.name);
+    }
+    const misch = counts.length > 1;
+    $("#out-budget").innerHTML = '<span class="cnt">0</span> ' + (misch ? "Drinks" : "&times; " + plan.items[0].getraenk.name);
     countUp($("#out-budget .cnt"), plan.anzahl, 700);
-    $("#out-budget-sub").textContent = singular ? "und du bist morgen frisch." : "und du bist morgen frisch.";
+    $("#out-budget-sub").innerHTML = misch ? counts.join(" &middot; ") + " - und du bist morgen frisch." : "und du bist morgen frisch.";
     const peakEl = $("#out-peak"), grammEl = $("#out-gramm");
     peakEl.innerHTML = "0&permil;"; grammEl.textContent = "0 g";
     countUp(peakEl, plan.peakPromille, 900, (v) => v.toFixed(1).replace(".", ",") + "&permil;");
     countUp(grammEl, plan.grammGesamt, 900, (v) => Math.round(v) + " g");
-    $("#out-wake").textContent = minZuHM(start + trink + schlafDauer);
+    const nuechtern = minZuHM(start + Math.ceil(plan.nuechternStd * 60 / 5) * 5);
+    $("#out-wake").textContent = "~" + nuechtern;
 
     // Plan-Liste
     const ul = $("#plan-liste");
     ul.innerHTML = "";
-    plan.zeitenStd.forEach((tStd, i) => {
+    plan.items.forEach((it, i) => {
       const li = document.createElement("li");
-      const uhr = minZuHM(start + Math.round(tStd * 60));
+      const uhr = minZuHM(start + Math.round(it.t * 60));
       li.innerHTML = '<span class="p-zeit">' + uhr + "</span>" +
-        '<span class="p-was"><b>' + getraenk.name + (i === 0 ? " - langsam antrinken" : "") + "</b><span>dazu ein grosses Glas Wasser</span></span>" +
+        '<span class="p-was"><b>' + it.getraenk.name + (i === 0 ? " - langsam antrinken" : "") + "</b><span>dazu ein grosses Glas Wasser</span></span>" +
         '<span class="p-nr">' + (i + 1) + "/" + plan.anzahl + "</span>";
       ul.appendChild(li);
     });
-    const letzte = minZuHM(start + Math.round(plan.zeitenStd[plan.zeitenStd.length - 1] * 60));
-    $("#out-stopp").innerHTML = "Um <b>" + letzte + " Uhr</b> ist der letzte " + getraenk.name + " fertig. Danach nur noch Wasser - so hat dein Koerper bis <b>" + minZuHM(start + trink + schlafDauer) + " Uhr</b> Zeit, alles abzubauen.";
+    const letzte = minZuHM(start + Math.round(plan.items[plan.items.length - 1].t * 60));
+    $("#out-stopp").innerHTML = "Um <b>" + letzte + " Uhr</b> ist der letzte Drink fertig (" + plan.items[plan.items.length - 1].getraenk.name + "). Danach nur Wasser - und egal, wann du ins Bett kommst: um <b>" + nuechtern + " Uhr</b> bist du komplett nuechtern.";
   }
-  zeichneKurve(plan, start, trink, schlafDauer);
+  zeichneKurve(plan, start, trink);
   speichern();
 }
 
 // ---------- BAC-Kurve (SVG) ----------
-function zeichneKurve(plan, startMin, trinkMin, schlafMin) {
+function zeichneKurve(plan, startMin, trinkMin, schlafMin = SCHLAF_ANNAHME_H * 60) {
   const svg = $("#kurve");
   const W = 640, H = 240, PAD_L = 40, PAD_R = 14, PAD_T = 18, PAD_B = 26;
   const gesamtStd = (trinkMin + schlafMin) / 60;
@@ -219,8 +223,8 @@ function zeichneKurve(plan, startMin, trinkMin, schlafMin) {
     '<line x1="' + x(trinkMin / 60) + '" y1="' + PAD_T + '" x2="' + x(trinkMin / 60) + '" y2="' + (H - PAD_B) + '" stroke="#b09878" stroke-width="1" stroke-dasharray="3 4" opacity=".6"/>';
   // Zeitlabels
   g += '<text x="' + x(0) + '" y="' + (H - 8) + '" fill="#b09878" font-size="10" font-family="IBM Plex Mono">' + minZuHM(startMin) + "</text>" +
-    '<text x="' + x(trinkMin / 60) + '" y="' + (H - 8) + '" fill="#b09878" font-size="10" text-anchor="middle" font-family="IBM Plex Mono">' + minZuHM(startMin + trinkMin) + "</text>" +
-    '<text x="' + (W - PAD_R) + '" y="' + (H - 8) + '" fill="#8fbf6f" font-size="10" text-anchor="end" font-family="IBM Plex Mono">' + minZuHM(startMin + trinkMin + schlafMin) + "</text>";
+    '<text x="' + x(trinkMin / 60) + '" y="' + (H - 8) + '" fill="#b09878" font-size="10" text-anchor="middle" font-family="IBM Plex Mono">Feierabend</text>' +
+    '<text x="' + (W - PAD_R) + '" y="' + (H - 8) + '" fill="#8fbf6f" font-size="10" text-anchor="end" font-family="IBM Plex Mono">' + minZuHM(startMin + trinkMin + schlafMin) + " nüchtern</text>";
   // Mond + Sonne
   g += '<text x="' + (x(trinkMin / 60) + 12) + '" y="' + (PAD_T + 12) + '" font-size="13">🌙</text>' +
     '<text x="' + (W - PAD_R - 14) + '" y="' + (PAD_T + 12) + '" font-size="13">☀️</text>';
@@ -230,9 +234,9 @@ function zeichneKurve(plan, startMin, trinkMin, schlafMin) {
     pfad = "M" + kurve.map((p) => x(p.t).toFixed(1) + "," + y(p.bac).toFixed(1)).join(" L");
     flaeche = pfad + " L" + x(kurve[kurve.length - 1].t).toFixed(1) + "," + (H - PAD_B) + " L" + PAD_L + "," + (H - PAD_B) + " Z";
     // Drink-Marker
-    for (const t0 of plan.zeitenStd) {
-      const pt = kurve.reduce((a, b) => (Math.abs(b.t - t0) < Math.abs(a.t - t0) ? b : a));
-      g += '<circle class="drink-dot" cx="' + x(pt.t) + '" cy="' + y(pt.bac) + '" r="4" fill="#f2a33c" stroke="#16100b" stroke-width="2"/>';
+    for (const it of plan.items) {
+      const pt = kurve.reduce((a, b) => (Math.abs(b.t - it.t) < Math.abs(a.t - it.t) ? b : a));
+      g += '<circle class="drink-dot" cx="' + x(pt.t) + '" cy="' + y(pt.bac) + '" r="4" fill="' + (GLAS_FARBEN[it.getraenk.id] || "#f2a33c") + '" stroke="#16100b" stroke-width="2"/>';
     }
     // Peak-Label
     const peakP = kurve.reduce((a, b) => (b.bac > a.bac ? b : a));
@@ -287,15 +291,15 @@ function glasSvg(typ, farbe, i) {
       '<path d="M12 24h16l-1.5 24a3.5 3.5 0 0 1-3.5 3h-6a3.5 3.5 0 0 1-3.5-3z" fill="none" stroke="#f2a33c" stroke-width="2" stroke-linejoin="round"/></svg>';
   return '<div class="glas-wrap">' + kopf + "</div>";
 }
-function glaeserBuehne(plan, getraenk) {
+function glaeserBuehne(plan) {
   const buehne = $("#glas-buehne");
   buehne.innerHTML = "";
   if (!plan) { buehne.classList.add("leer"); return; }
   buehne.classList.remove("leer");
-  const typ = ICON_ZUORDNUNG[getraenk.id];
-  const farbe = GLAS_FARBEN[getraenk.id] || "#e8912d";
   const max = 6;
-  for (let i = 0; i < Math.min(max, plan.anzahl); i++) buehne.insertAdjacentHTML("beforeend", glasSvg(typ, farbe, i));
+  plan.items.slice(0, max).forEach((it, i) => {
+    buehne.insertAdjacentHTML("beforeend", glasSvg(ICON_ZUORDNUNG[it.getraenk.id], GLAS_FARBEN[it.getraenk.id] || "#e8912d", i));
+  });
   if (plan.anzahl > max) buehne.insertAdjacentHTML("beforeend", '<div class="glas-wrap glas-mehr">+' + (plan.anzahl - max) + "</div>");
   const stempel = $("#stempel");
   stempel.hidden = true;
@@ -303,14 +307,10 @@ function glaeserBuehne(plan, getraenk) {
 }
 
 // ---------- Wissenschaft: Herleitung mit eingesetzten Werten ----------
-function wissenschaftFuellen(plan, getraenk, empfind) {
+function wissenschaftFuellen(plan, getraenke, empfind) {
   const p = state.profil;
   const r = verteilFaktor(p.geschlecht);
   const kw = p.gewicht * r;                       // Koerperwasser in kg
-  const gramm = alkoholGramm(getraenk.ml, getraenk.vol);
-  const bacProDrink = promilleZuwachs(gramm, p.geschlecht, p.gewicht);
-  const dauer = abendDauerMin();
-  const abbauImSchlaf = ABBAU * (dauer.schlafDauer / 60);
   const grenzG = p.gewicht * empfind.gProKg;
 
   const z = (v) => String(v).replace(".", ",");
@@ -321,18 +321,23 @@ function wissenschaftFuellen(plan, getraenk, empfind) {
     "<br>Bei dir: " + p.gewicht + " kg, " + sexTxt +
     "<br>&rarr; dein Verteilungsraum: " + p.gewicht + " kg &times; " + z(r.toFixed(2)) + " = <b>" + z(kw.toFixed(1)) + " kg</b> Koerperwasser.";
 
+  const drinkTxt = getraenke.map((g) => {
+    const gramm = alkoholGramm(g.ml, g.vol);
+    const sprung = promilleZuwachs(gramm, p.geschlecht, p.gewicht);
+    return "<b>" + g.name + "</b> (" + g.detail + "): " + z(gramm.toFixed(1)) + " g &rarr; <b>+" + z(sprung.toFixed(2)) + "&permil;</b>";
+  }).join("<br>");
   $("#wis-drink").innerHTML =
-    "Ein " + getraenk.name + " (" + getraenk.detail + ") enthaelt <b>" + z(gramm.toFixed(1)) + " g</b> reinsten Alkohol" +
-    " (Volumen &times; Vol.% &times; Dichte 0,789 g/ml)." +
-    "<br>&rarr; Promille-Sprung pro " + getraenk.name + ": " + gramm.toFixed(1) + " / " + kw.toFixed(1) + " = <b>" + z(bacProDrink.toFixed(2)) + "&permil;</b>";
+    "Alkoholmenge = Volumen &times; Vol.% &times; Dichte 0,789 g/ml - pro Getraenk deiner Auswahl:" +
+    "<br>" + drinkTxt;
 
   $("#wis-abbau").innerHTML =
     "Dein Koerper baut Alkohol nahezu konstant ab - im Mittel <b>0,15&permil; pro Stunde</b> (Literatur-Spanne 0,10-0,20&permil;/h, Jones 2010)." +
-    "<br>In deinen " + z((dauer.schlafDauer / 60).toFixed(1)) + " h Schlaf baut er bis zu <b>" + z(abbauImSchlaf.toFixed(2)) + "&permil;</b> ab. Deshalb duerfen beim Einschlafen nur Reste uebrig sein, die die Nacht sicher schafft.";
+    "<br>Weil niemand vorher weiss, wann er ins Bett faellt, rechnet der Plan mit der <b>Worst-Case-Nacht</b>: alles, was du trinkst, ist <b>5 h nach deinem letzten Drink</b> komplett abgebaut (" +
+    "0,15&permil;/h &times; 5 h = 0,75&permil; Reserve) - egal, wann du pennt und wie lange du schlaefst.";
 
   $("#wis-grenzen").innerHTML =
     "Der Plan haelt <b>drei</b> medizinische Grenzen gleichzeitig ein:" +
     "<br>1. <b>Peak &le; " + z(empfind.peak.toFixed(1)) + "&permil;</b> - je hoeher die Spitze, desto sicherer der Kater (Wiese et al. 2000, Ann Intern Med 132:897)." +
     "<br>2. <b>Gesamtmenge &le; " + Math.round(grenzG) + " g</b> (" + z(empfind.gProKg.toFixed(1)) + " g/kg Koerpergewicht bei \"" + empfind.name + "\") - deine Leber metabolisiert nur ~7-10 g/h (ADH/ALDH-Kapazitaet); drueber staust sich Acetaldehyd, der Hauptverdaechtige des Katers." +
-    "<br>3. <b>0&permil; beim Aufwachen</b> (&le; 0,05&permil; Toleranz) - aufwachen mit Restalkohol ist Kater-Garantie (Verster et al., Curr Drug Abuse Rev 2010).";
+    "<br>3. <b>0&permil; spaetestens 5 h nach dem letzten Drink</b> (&le; 0,05&permil; Toleranz) - mit Restalkohol im Schlaf aufwachen ist Kater-Garantie (Verster et al., Curr Drug Abuse Rev 2010).";
 }

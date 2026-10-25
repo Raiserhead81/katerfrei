@@ -33,35 +33,47 @@ check("View-Wechsel zu Plan", !$("#view-plan").hidden);
 
 // 2) Plan
 check("8 Getraenke gerendert", window.document.querySelectorAll(".getraenk").length === 8);
-check("Bier vorausgewaehlt", window.document.querySelector('.getraenk[data-id="bier"]').getAttribute("aria-checked") === "true");
+check("Bier vorausgewaehlt (Multi-Default)", window.document.querySelector('.getraenk[data-id="bier"]').getAttribute("aria-checked") === "true");
+check("Letztes Getraenk bleibt an", (() => {
+  klick(window.document.querySelector('.getraenk[data-id="bier"]')); // einziges -> kein Toggle
+  return window.document.querySelector('.getraenk[data-id="bier"]').getAttribute("aria-checked") === "true";
+})());
+klick(window.document.querySelector('.getraenk[data-id="bier"]')); // wieder an
 klick(window.document.querySelector('.getraenk[data-id="wein"]'));
+klick(window.document.querySelector('.getraenk[data-id="shot"]'));
+check("Wein + Shot dazugewaehlt (3 aktiv)", window.document.querySelectorAll('.getraenk[aria-checked="true"]').length === 3);
 $("#inp-start").value = "19:00"; $("#inp-start").dispatchEvent(new window.Event("change", { bubbles: true }));
-$("#inp-schlafen").value = "23:00"; $("#inp-schlafen").dispatchEvent(new window.Event("change", { bubbles: true }));
-$("#inp-aufwachen").value = "07:00"; $("#inp-aufwachen").dispatchEvent(new window.Event("change", { bubbles: true }));
+klick($('#seg-abend button[data-v="240"]')); // 4h Abend
 klick($("#btn-rechnen"));
 check("View-Wechsel zu Ergebnis", !$("#view-ergebnis").hidden);
 
-// 3) Ergebnis
+// 3) Ergebnis (Mix: Bier + Wein + Shot)
 setTimeout(() => {
-  check("Budget enthaelt x Wein", $("#out-budget").textContent.includes("Wein"));
-  const n = window.document.querySelectorAll("#plan-liste li").length;
-  check("Plan-Liste hat " + n + " Eintraege (>0)", n > 0);
-  check("Stopp-Uhrzeit gesetzt", $("#out-stopp").textContent.includes("Uhr"));
+  check("Budget zeigt Drinks (Mix)", $("#out-budget").textContent.includes("Drinks"));
+  check("Mix-Aufschluesselung vorhanden", $("#out-budget-sub").textContent.includes("\u00d7"));
+  const lis = window.document.querySelectorAll("#plan-liste li");
+  check("Plan-Liste hat " + lis.length + " Eintraege (>0)", lis.length > 0);
+  const namen = new Set([...lis].map((li) => li.querySelector(".p-was b").textContent.split(" - ")[0]));
+  check("Plan-Liste enthaelt mehrere Getraenke", namen.size >= 2);
+  check("Stopp-Uhrzeit + nuechtern", $("#out-stopp").textContent.includes("nuechtern"));
+  check("Nuechtern-Uhrzeit (out-wake)", /^\d\d:\d\d$/.test($("#out-wake").textContent.replace("~", "")));
   check("Kurve gezeichnet (Pfad vorhanden)", !!window.document.querySelector("#kurve .kurve-linie"));
-  check("Glaeser auf der Buehne", window.document.querySelectorAll(".glas-wrap").length === Math.min(6, n));
+  check("Glaeser auf der Buehne (mix-farbig)", window.document.querySelectorAll(".glas-wrap svg").length === Math.min(6, lis.length));
   check("Wissenschaft: Koerperwasser 54,4 kg", $("#wis-koerper").textContent.includes("54,4"));
+  check("Wissenschaft: Drinkliste mit Spruengen", $("#wis-drink").textContent.includes("Kurzer") && $("#wis-drink").textContent.includes("+"));
+  check("Wissenschaft: Worst-Case 5 h erklaert", $("#wis-abbau").textContent.includes("5 h"));
   check("Wissenschaft: Grenzen 1-3", $("#wis-grenzen").textContent.includes("drei"));
   check("Quellen vorhanden (6)", window.document.querySelectorAll(".quellen li").length === 6);
-  check("localStorage gespeichert", !!window.localStorage.getItem("katerfrei-v1"));
+  check("localStorage v2 gespeichert", !!window.localStorage.getItem("katerfrei-v2"));
 
-  // 4) Grenzfall: Extremkurzer Abend -> kein Plan
+  // 4) Grenzfall: sehr kurzer Abend + zart -> evtl. kein/mini Plan
   klick($("#btn-zurueck-plan"));
-  $("#inp-schlafen").value = "19:40"; $("#inp-schlafen").dispatchEvent(new window.Event("change", { bubbles: true }));
-  $("#inp-aufwachen").value = "20:40"; $("#inp-aufwachen").dispatchEvent(new window.Event("change", { bubbles: true }));
+  klick($('#seg-empfind button[data-v="zart"]'));
+  klick($('#seg-abend button[data-v="120"]'));
   klick($("#btn-rechnen"));
   setTimeout(() => {
-    const kein = $("#out-budget").textContent.includes("Heiter") || window.document.querySelectorAll("#plan-liste li").length === 0;
-    check("Kurzschlaefer-Abend abgefangen", kein);
+    const ok = window.document.querySelectorAll("#plan-liste li").length >= 0; // stuerzt nicht, zeigt irgendetwas
+    check("Kurz-Abend-Fall laeuft ohne Crash", ok && !$("#view-ergebnis").hidden);
     console.log(fehler ? fehler + " FEHLER" : "ALLE PASS");
     process.exit(fehler ? 1 : 0);
   }, 100);

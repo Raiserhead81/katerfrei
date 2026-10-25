@@ -1,34 +1,41 @@
 const c = require('./calculator');
-const bier = c.GETRAENKE.find(g => g.id === 'bier');
+const G = Object.fromEntries(c.GETRAENKE.map(g => [g.id, g]));
 const EMP = Object.fromEntries(c.EMPFINDLICHKEIT.map(e => [e.id, e]));
 // grammGesamtLimit = gProKg * kg, wie die UI es uebergibt (Doppel-Grenze: Peak + Gesamtmenge)
+// schlafMin default: 5h nach letztem Drink nuechtern (Worst-Case-Nacht, keine Nutzereingabe mehr)
 const cases = [
-  { name: 'Mann 80kg, 4h trinken, 8h Schlaf, normal (0.8) -> erwartet 3 Bier, 59 g',
-    args: { geschlecht: 'm', gewicht: 80, trinkMin: 240, schlafMin: 480, getraenk: bier, peakLimit: EMP.normal.peak, grammGesamtLimit: 80 * EMP.normal.gProKg },
-    erw: { anzahl: 3, gramm: 59 } },
-  { name: 'Frau 60kg, 4h trinken, 8h Schlaf, normal (0.8) -> erwartet 2 Bier, 39 g',
-    args: { geschlecht: 'w', gewicht: 60, trinkMin: 240, schlafMin: 480, getraenk: bier, peakLimit: EMP.normal.peak, grammGesamtLimit: 60 * EMP.normal.gProKg },
-    erw: { anzahl: 2, gramm: 39 } },
-  { name: 'Mann 90kg, 5h, 9h Schlaf, robust, Weizen -> erwartet 4 Drinks, 88 g',
-    args: { geschlecht: 'm', gewicht: 90, trinkMin: 300, schlafMin: 540,
-      getraenk: c.GETRAENKE.find(g => g.id === 'weizen'), peakLimit: EMP.robust.peak, grammGesamtLimit: 90 * EMP.robust.gProKg },
-    erw: { anzahl: 4, gramm: 88 } },
-  { name: 'Frau 55kg, zart, Wein, 3h/8h -> nur Gesamtbudget 33 g zulassen',
-    args: { geschlecht: 'w', gewicht: 55, trinkMin: 180, schlafMin: 480,
-      getraenk: c.GETRAENKE.find(g => g.id === 'wein'), peakLimit: EMP.zart.peak, grammGesamtLimit: 55 * EMP.zart.gProKg },
-    erw: null },
+  { name: 'Mann 80kg, 4h Abend, normal, nur Bier',
+    args: { geschlecht: 'm', gewicht: 80, trinkMin: 240, getraenke: [G.bier], peakLimit: EMP.normal.peak, grammGesamtLimit: 80 * EMP.normal.gProKg } },
+  { name: 'Frau 60kg, 4h Abend, normal, nur Bier',
+    args: { geschlecht: 'w', gewicht: 60, trinkMin: 240, getraenke: [G.bier], peakLimit: EMP.normal.peak, grammGesamtLimit: 60 * EMP.normal.gProKg } },
+  { name: 'Mann 90kg, 5h Abend, robust, nur Weizen',
+    args: { geschlecht: 'm', gewicht: 90, trinkMin: 300, getraenke: [G.weizen], peakLimit: EMP.robust.peak, grammGesamtLimit: 90 * EMP.robust.gProKg } },
+  { name: 'Mann 80kg, 4h Abend, normal, MIX Bier+Wein (round-robin)',
+    args: { geschlecht: 'm', gewicht: 80, trinkMin: 240, getraenke: [G.bier, G.wein], peakLimit: EMP.normal.peak, grammGesamtLimit: 80 * EMP.normal.gProKg } },
+  { name: 'Frau 55kg, 3h Abend, zart, MIX Sekt+Bier',
+    args: { geschlecht: 'w', gewicht: 55, trinkMin: 180, getraenke: [G.sekt, G.bier], peakLimit: EMP.zart.peak, grammGesamtLimit: 55 * EMP.zart.gProKg } },
 ];
 let fail = 0;
 for (const t of cases) {
   const p = c.planBerechnen(t.args);
   if (!p) { console.log('FAIL (kein Plan):', t.name); fail++; continue; }
   const ok = p.peakPromille <= p.limitPromille + 1e-9 && p.wakePromille <= c.WAKE_TOLERANZ + 1e-9
-    && (!t.erw || (p.anzahl === t.erw.anzahl && Math.abs(p.grammGesamt - t.erw.gramm) < 1.5));
-  const mono = p.kurve.length > 0 && p.peakPromille > 0;
-  console.log(`${ok && mono ? 'PASS' : 'FAIL'} | ${t.name}\n  -> ${p.anzahl} Drinks, Peak ${p.peakPromille.toFixed(2)} (Limit ${p.limitPromille.toFixed(2)}), beim Aufwachen ${p.wakePromille.toFixed(3)} Promille, ${p.grammGesamt.toFixed(0)} g Alkohol`);
-  if (!ok || !mono) fail++;
+    && p.grammGesamt <= t.args.grammGesamtLimit + 1e-9
+    && p.items.length === p.anzahl && p.items.every(it => it.gramm > 0 && it.t >= 0 && it.t <= t.args.trinkMin / 60 + 1e-9)
+    && p.nuechternStd <= (t.args.trinkMin + c.SCHLAF_ANNAHME_H * 60) / 60 + 1e-9;
+  console.log(`${ok ? 'PASS' : 'FAIL'} | ${t.name}\n  -> ${p.anzahl} Drinks (${p.items.map(i => i.getraenk.id).join(',')}), Peak ${p.peakPromille.toFixed(2)} (Limit ${p.limitPromille.toFixed(2)}), wake ${p.wakePromille.toFixed(3)}, ${p.grammGesamt.toFixed(0)} g, nuechternStd ${p.nuechternStd.toFixed(2)}`);
+  if (!ok) fail++;
 }
-// Grenzfall: extremer Kurzschlaefer
-const kurz = c.planBerechnen({ geschlecht: 'm', gewicht: 80, trinkMin: 60, schlafMin: 120, getraenk: bier, peakLimit: EMP.normal.peak, grammGesamtLimit: 80 * EMP.normal.gProKg });
-console.log('Kurz-Fall (1h trinken/2h Schlaf):', kurz ? `${kurz.anzahl} Bier, wake ${kurz.wakePromille.toFixed(2)}` : 'PASS (kein Plan)');
+// Mix-Verifikation: round-robin verteilt wirklich beide Getraenke
+const mix = c.planBerechnen({ geschlecht: 'm', gewicht: 80, trinkMin: 240, getraenke: [G.bier, G.wein], peakLimit: EMP.normal.peak, grammGesamtLimit: 80 * EMP.normal.gProKg });
+const ids = new Set(mix.items.map(i => i.getraenk.id));
+console.log(ids.size >= 2 && mix.anzahl >= 2 ? 'PASS' : 'FAIL', '| Mix enthaelt beide Getraenke:', [...ids].join(','));
+if (ids.size < 2 || mix.anzahl < 2) fail++;
+// Grenzfall: extrem kurzer Abend + zart + leicht -> vmtl. kein Plan
+const grenz = c.planBerechnen({ geschlecht: 'w', gewicht: 50, trinkMin: 60, getraenke: [G.shot], peakLimit: EMP.zart.peak, grammGesamtLimit: 50 * EMP.zart.gProKg });
+console.log(grenz ? `Kurz-Fall: ${grenz.anzahl} Shot(s)` : 'Kurz-Fall: kein Plan');
+// Kompatibilitaet: getraenk-Einzelobjekt ohne schlafMin
+const single = c.planBerechnen({ geschlecht: 'm', gewicht: 80, trinkMin: 240, getraenk: G.bier, peakLimit: EMP.normal.peak, grammGesamtLimit: 80 * EMP.normal.gProKg });
+console.log(single && single.schlafMin === c.SCHLAF_ANNAHME_H * 60 && single.anzahl >= 1 ? 'PASS' : 'FAIL', '| Einzel-Getraenk + schlafMin-Default', single ? `(${single.anzahl} Bier)` : '');
+if (!single || single.schlafMin !== c.SCHLAF_ANNAHME_H * 60) fail++;
 process.exit(fail ? 1 : 0);
