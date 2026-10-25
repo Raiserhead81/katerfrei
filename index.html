@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="description" content="Katerfrei - plant, wie viel du heute trinken kannst, ohne morgen zu leiden. Auf Basis von Gewicht, Geschlecht und deinem Schlaf.">
+<meta name="theme-color" content="#16100b">
+<title>Katerfrei - trink klug, wach frisch auf</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='20' fill='%2316100b'/%3E%3Cpath d='M30 25h40l-5 50a8 8 0 0 1-8 7H43a8 8 0 0 1-8-7z' fill='%23f2a33c'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,600;0,9..144,900;1,9..144,900&family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="grain" aria-hidden="true"></div>
+<div class="wrap">
+  <header class="head">
+    <div class="logo">KATER<span>FREI</span></div>
+    <p class="tag">Der Trinkplan fuer den Morgen danach.</p>
+  </header>
+  <main id="app">
+
+  <!-- ============ SCHRITT 1: PROFIL ============ -->
+  <section id="view-setup" class="view">
+    <h1 class="frasse">Erst die harten Fakten:</h1>
+    <p class="sub">Daraus rechnet die App dein persoenliches Alkohol-Budget. Alles bleibt lokal auf deinem Geraet.</p>
+
+    <div class="feld">
+      <label>Geschlecht <small>( bestimmt den Koerperwasser-Anteil )</small></label>
+      <div class="segment" id="seg-geschlecht" role="radiogroup">
+        <button type="button" data-v="m" role="radio" aria-checked="false">Mann</button>
+        <button type="button" data-v="w" role="radio" aria-checked="false">Frau</button>
+        <button type="button" data-v="x" role="radio" aria-checked="false">keine Angabe</button>
+      </div>
+    </div>
+
+    <div class="feld">
+      <label for="inp-alter">Alter <output id="out-alter">30</output></label>
+      <input type="range" id="inp-alter" min="16" max="90" value="30">
+    </div>
+
+    <div class="feld">
+      <label for="inp-gewicht">Gewicht <output id="out-gewicht">75 kg</output></label>
+      <input type="range" id="inp-gewicht" min="40" max="150" value="75" step="1">
+    </div>
+
+    <div class="warn-mini" id="warn-u18" hidden>Unter 18 gar nicht trinken - egal was hier steht.</div>
+
+    <button class="btn-weiter" id="btn-weiter">Weiter zum Plan</button>
+  </section>
+
+  <!-- ============ SCHRITT 2: DER ABEND ============ -->
+  <section id="view-plan" class="view" hidden>
+    <h1 class="frasse">Wie sieht der Abend aus?</h1>
+    <button class="link-edit" id="btn-edit-profil">Profil aendern</button>
+
+    <div class="feld">
+      <label>Was geht heute in dich rein?</label>
+      <div class="getraenke" id="getraenke-liste" role="radiogroup"></div>
+      <p class="hint">Du kannst natuerlich mischen - der Plan gilt fuer dein gewaehltes Standardgetraenk.</p>
+    </div>
+
+    <div class="zeiten">
+      <div class="feld">
+        <label for="inp-start">Erster Drink</label>
+        <input type="time" id="inp-start" value="19:00">
+      </div>
+      <div class="feld">
+        <label for="inp-schlafen">Zubettgehen</label>
+        <input type="time" id="inp-schlafen" value="23:30">
+      </div>
+      <div class="feld">
+        <label for="inp-aufwachen">Aufwachen</label>
+        <input type="time" id="inp-aufwachen" value="07:00">
+      </div>
+    </div>
+
+    <div class="feld">
+      <label>Wie empfindlich reagierst du auf Alkohol?</label>
+      <div class="segment" id="seg-empfind" role="radiogroup">
+        <button type="button" data-v="zart" role="radio" aria-checked="false">zartbesaitet</button>
+        <button type="button" data-v="normal" role="radio" aria-checked="true">normal</button>
+        <button type="button" data-v="robust" role="radio" aria-checked="false">robust</button>
+      </div>
+    </div>
+
+    <button class="btn-weiter" id="btn-rechnen">Plan berechnen</button>
+  </section>
+
+  <!-- ============ SCHRITT 3: ERGEBNIS ============ -->
+  <section id="view-ergebnis" class="view" hidden>
+    <p class="praefix">Dein Budget heute Abend <span class="stempel" id="stempel" hidden>Prost!</span></p>
+    <div class="glas-buehne" id="glas-buehne" aria-hidden="true"></div>
+    <h1 class="zahl-linie" id="out-budget">3 &times; Bier</h1>
+    <p class="sub" id="out-budget-sub">und du bist morgen frisch.</p>
+
+    <div class="kennzahlen">
+      <div class="kenn"><span class="k-wert" id="out-peak">0,5&permil;</span><span class="k-label">Promille-Hoehepunkt</span></div>
+      <div class="kenn"><span class="k-wert" id="out-gramm">60 g</span><span class="k-label">Alkohol gesamt</span></div>
+      <div class="kenn"><span class="k-wert" id="out-wake">07:00</span><span class="k-label">wieder bei 0&permil;</span></div>
+    </div>
+
+    <figure class="kurve-box">
+      <svg id="kurve" viewBox="0 0 640 220" preserveAspectRatio="none" role="img" aria-label="Promille-Verlauf des Abends"></svg>
+      <figcaption>Promille-Verlauf: Abend, Nacht, Aufwachen.</figcaption>
+    </figure>
+
+    <h2 class="frasse klein">Dein Trinkplan</h2>
+    <ol class="plan" id="plan-liste"></ol>
+    <div class="stoppschild" id="out-stopp"></div>
+
+    <h2 class="frasse klein">Damit es morgen wirklich gut geht</h2>
+    <ul class="tipps">
+      <li><b>Wasser.</b> Zu jedem Drink ein grosses Glas - Alkohol hemmt das Dursthormon ADH und kostet dich pro 10 g rund 100 ml Fluessigkeit extra (Eggleton, J Physiol 1942).</li>
+      <li><b>Essen.</b> Vor dem ersten Drink eine warme Mahlzeit - Fett und Protein verlangsamen die Alkoholaufnahme deutlich.</li>
+      <li><b>Zeit lassen.</b> Der Plan hat Abstand eingebaut. Wer ihn hetzt, trinkt dem Koerper davon.</li>
+      <li><b>Kein Nachschub.</b> Nach dem letzten Drink im Plan ist Schluss - auch wenn's noch so schoen ist.</li>
+    </ul>
+
+    <details class="wissenschaft" id="wissenschaft">
+      <summary>Die Wissenschaft dahinter - mit deinen Werten bewiesen</summary>
+      <h3>1. Wo der Alkohol bei dir landet</h3>
+      <p id="wis-koerper"></p>
+      <h3>2. Was ein Drink bei dir anrichtet</h3>
+      <p id="wis-drink"></p>
+      <h3>3. Wie schnell du abbauen kannst</h3>
+      <p id="wis-abbau"></p>
+      <h3>4. Die drei Grenzen des Plans</h3>
+      <p id="wis-grenzen"></p>
+      <h3>Quellen</h3>
+      <ul class="quellen">
+        <li>Widmark, E.M.P. (1932). <i>Die theoretischen Grundlagen und die praktische Verwendbarkeit der gerichtlich-medizinischen Alkoholbestimmung.</i> Urban &amp; Schwarzenberg.</li>
+        <li>Watson, P.E., Watson, I.D., Batt, R.D. (1981). Prediction of blood alcohol concentrations. <i>British Journal of Addiction</i> 76(2):101-123.</li>
+        <li>Wiese, J.G., Shlipak, M.G., Browner, W.S. (2000). The alcohol hangover. <i>Annals of Internal Medicine</i> 132(11):897-902.</li>
+        <li>Verster, J.C. et al. (2010). The Alcohol Hangover Research Group Consensus Statement. <i>Current Drug Abuse Reviews</i> 3(2):116-126.</li>
+        <li>Eggleton, M.G. (1942). The diuretic action of alcohol in man. <i>The Journal of Physiology</i> 101:172-191.</li>
+        <li>Jones, A.W. (2010). Evidence-based survey of the elimination rates of ethanol from blood with applications in forensic casework. <i>Forensic Science International</i> 200:1-20.</li>
+      </ul>
+      <p class="wis-hinweis">Alle Werte sind Schaetzungen fuer gesunde Erwachsene. Individuelle Abweichungen von +/-20% sind normal; Essen, Medikamente, Schlafqualitaet und Gewoehnung verschieben alles. Diese App ist Bildung, keine Medizin - und schon gar keine Einladung, mehr zu trinken.</p>
+    </details>
+
+    <div class="btn-row">
+      <button class="btn-ghost" id="btn-zurueck-plan">Aendern</button>
+      <button class="btn-weiter" id="btn-von-vorn">Neuer Abend</button>
+    </div>
+
+    <p class="disclaimer">Schätzung nach Widmark-Modell (Abbau 0,15&permil;/h). Kein medizinischer Rat, keine Freifahrt-Schein: Am Steuer gilt 0,0&permil;. Bei Medikamenten, Schwangerschaft oder Abhaengigkeit: Finger weg.</p>
+  </section>
+  </main>
+  <footer class="fuss">Katerfrei &middot; hinterfragt dein viertes Bier &middot; keine Daten, kein Server, nur Mathe.</footer>
+</div>
+<script src="calculator.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
