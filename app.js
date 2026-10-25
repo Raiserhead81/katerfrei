@@ -459,3 +459,17 @@ function wissenschaftFuellen(plan, getraenke, empfind, dauer) {
     "<br>2. <b>Gesamtmenge &le; " + Math.round(grenzG) + " g</b> (" + z(empfind.gProKg.toFixed(1)) + " g/kg Koerpergewicht bei \"" + empfind.name + "\") - deine Leber metabolisiert nur ~7-10 g/h (ADH/ALDH-Kapazitaet); drueber staust sich Acetaldehyd, der Hauptverdaechtige des Katers." +
     "<br>3. <b>0&permil; spaetestens 5 h nach dem letzten Drink</b> (&le; 0,05&permil; Toleranz) - mit Restalkohol im Schlaf aufwachen ist Kater-Garantie (Verster et al., Curr Drug Abuse Rev 2010).";
 }
+
+// --- PWA: Service Worker + Auto-Update ueber /VERSION (gemivo-Standard) ---
+if ("serviceWorker" in navigator && location.protocol.startsWith("http")) {
+  addEventListener("load", () => {
+    navigator.serviceWorker.register("sw.js").then((reg) => {
+      fetch("VERSION", { cache: "no-store" }).then((r) => r.text()).then((v) => {
+        if (localStorage.getItem("kf-version") && localStorage.getItem("kf-version") !== v) {
+          reg.update().then(() => location.reload());
+        }
+        localStorage.setItem("kf-version", v);
+      }).catch(() => {});
+    }).catch(() => {});
+  });
+}
