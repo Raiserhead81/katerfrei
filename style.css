@@ -290,3 +290,4 @@ body::before {
 .rang-badge { font-family: var(--mono); font-size: 12px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--amber); border: 1.5px solid var(--amber-dunkel); border-radius: 999px; padding: 5px 14px; background: rgba(242, 163, 60, 0.08); }
 .rang-spruch { font-size: 13px; color: var(--muted); font-style: italic; }
 #btn-share { animation: none; }
+.rang-fakten { font-family: var(--mono); font-size: 11.5px; color: var(--muted); margin: -4px 0 12px; letter-spacing: 0.03em; }

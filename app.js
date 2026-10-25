@@ -370,15 +370,19 @@ const RAENGE = [
 const RANG_NUECHTERN = { name: "Ehrenwacher Nuechterner", sprueche: ["Heute siegt der Verstand - staerker als jeder Drink.", "Null Promille, volle Ehre.", "Der klueste Drink ist manchmal kein Drink."] };
 
 function setzeRang(plan) {
-  const badge = $("#rang-badge"), spruch = $("#rang-spruch"), zeile = $("#out-rang");
+  const badge = $("#rang-badge"), spruch = $("#rang-spruch"), zeile = $("#out-rang"), fakten = $("#rang-fakten");
   if (!plan) {
     badge.textContent = RANG_NUECHTERN.name;
     spruch.textContent = RANG_NUECHTERN.sprueche[Math.floor(Math.random() * RANG_NUECHTERN.sprueche.length)];
+    fakten.hidden = true;
   } else {
     const ratio = plan.peakPromille / plan.limitPromille;
     const rang = RAENGE.find((r) => ratio < r.max) || RAENGE[RAENGE.length - 1];
     badge.textContent = rang.name;
     spruch.textContent = rang.sprueche[Math.floor(Math.random() * rang.sprueche.length)];
+    const frei = Math.max(0, Math.round((1 - ratio) * 100));
+    fakten.textContent = "Peak " + plan.peakPromille.toFixed(2).replace(".", ",") + "\u2030 - " + frei + "% unter deinem Limit von " + plan.limitPromille.toFixed(2).replace(".", ",") + "\u2030.";
+    fakten.hidden = false;
     starteKonfetti();
   }
   zeile.hidden = false;

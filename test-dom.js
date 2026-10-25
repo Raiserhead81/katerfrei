@@ -95,6 +95,7 @@ setTimeout(() => {
   setTimeout(() => {
     check("Sub nennt ersten Drink (erster um)", $("#out-budget-sub").textContent.toLowerCase().includes("erster um"));
     check("Epik: Rang-Badge gefuellt", !$("#out-rang").hidden && $("#rang-badge").textContent.length > 3);
+    check("Epik: Rang nennt Peak-Zahl + Limit", !$("#rang-fakten").hidden && /Peak \d,\d\d\u2030/.test($("#rang-fakten").textContent) && $("#rang-fakten").textContent.includes("unter deinem Limit"));
     check("Epik: Spruch dabei", $("#rang-spruch").textContent.length > 5);
     check("Epik: Teilen-Button da", !!$("#btn-share"));
     klick($("#btn-zurueck-plan"));
