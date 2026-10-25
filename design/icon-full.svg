@@ -1,32 +1,43 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024"><defs>
-    <radialGradient id="bg" cx="50%" cy="38%" r="75%">
-      <stop offset="0" stop-color="#2e2013"/><stop offset="1" stop-color="#16100b"/>
-    </radialGradient>
-    <linearGradient id="bier" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0" stop-color="#f6b352"/><stop offset=".55" stop-color="#f2a33c"/><stop offset="1" stop-color="#d3861f"/>
-    </linearGradient>
-    <linearGradient id="glanz" x1="0" y1="0" x2="1" y2="0">
-      <stop offset="0" stop-color="#ffffff" stop-opacity=".38"/><stop offset="1" stop-color="#ffffff" stop-opacity="0"/>
-    </linearGradient>
-    <linearGradient id="rand" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0" stop-color="#f7ecd9" stop-opacity=".9"/><stop offset="1" stop-color="#f7ecd9" stop-opacity=".35"/>
-    </linearGradient>
-  </defs>
-<rect width="1024" height="1024" fill="url(#bg)"/><!-- Glas: leicht konisch -->
-  <path d="M330 380 L360 830 Q363 860 395 860 L629 860 Q661 860 664 830 L694 380 Z" fill="url(#rand)"/>
-  <path d="M352 405 L379 824 Q381 842 397 842 L627 842 Q643 842 645 824 L672 405 Z" fill="#0f0a06"/>
-  <path d="M366 470 L391 810 Q392 824 406 824 L618 824 Q632 824 633 810 L658 470 Z" fill="url(#bier)"/>
-  <path d="M400 480 L414 810 L442 810 L430 480 Z" fill="url(#glanz)"/>
-  <!-- Schaumkrone -->
-  <g fill="#f7ecd9">
-    <ellipse cx="395" cy="372" rx="62" ry="46"/><ellipse cx="512" cy="344" rx="90" ry="58"/><ellipse cx="628" cy="372" rx="62" ry="46"/>
-    <rect x="333" y="368" width="358" height="52" rx="26"/>
-    <path d="M448 420 q6 44 22 56 q-38 -6 -34 -52 Z"/>
-  </g>
-  <g fill="#ffffff" opacity=".5">
-    <circle cx="458" cy="332" r="14"/><circle cx="560" cy="326" r="10"/>
-  </g>
-  <!-- Promille-Badge -->
-  <circle cx="762" cy="278" r="150" fill="#16100b" stroke="#f2a33c" stroke-width="14"/>
-  <text x="762" y="336" text-anchor="middle" font-family="Menlo, monospace" font-weight="700" font-size="210" fill="#f2a33c">&#8240;</text>
+<radialGradient id="bg" cx="0.5" cy="0.42" r="0.75">
+<stop offset="0" stop-color="#231b12"/>
+<stop offset="0.7" stop-color="#120d08"/>
+<stop offset="1" stop-color="#0a0705"/>
+</radialGradient>
+<linearGradient id="gold" x1="0" y1="0" x2="0" y2="1">
+<stop offset="0" stop-color="#f0d494"/>
+<stop offset="0.5" stop-color="#d9b46a"/>
+<stop offset="1" stop-color="#a8823f"/>
+</linearGradient>
+<linearGradient id="bier" x1="0" y1="0" x2="0" y2="1">
+<stop offset="0" stop-color="#eeb968"/>
+<stop offset="0.55" stop-color="#d29a4a"/>
+<stop offset="1" stop-color="#a06e28"/>
+</linearGradient>
+<linearGradient id="glanz" x1="0" y1="0" x2="1" y2="0">
+<stop offset="0" stop-color="#ffffff" stop-opacity="0.30"/>
+<stop offset="0.35" stop-color="#ffffff" stop-opacity="0.06"/>
+<stop offset="1" stop-color="#ffffff" stop-opacity="0"/>
+</linearGradient>
+</defs>
+<rect width="1024" height="1024" fill="url(#bg)"/><!-- Bier in edler Form: schwarzer Grund, Gold-Kontur, Amber-Herz -->
+<g>
+<!-- Fluessigkeit -->
+<path d="M368 452 L656 452 C652 596 642 716 616 796 C606 826 566 844 512 844 C458 844 418 826 408 796 C382 716 372 596 368 452 Z" fill="url(#bier)"/>
+<!-- Fluessigkeits-Oberflaeche -->
+<ellipse cx="512" cy="452" rx="144" ry="26" fill="#f4cd8b" opacity="0.9"/>
+<!-- Glanz im Glas -->
+<path d="M412 470 C408 620 416 730 436 792 L486 792 C464 726 456 616 460 470 Z" fill="url(#glanz)"/>
+<!-- Glaskontur -->
+<path d="M340 372 L684 372 C678 560 668 720 636 816 C624 852 576 874 512 874 C448 874 400 852 388 816 C356 720 346 560 340 372 Z" fill="none" stroke="url(#gold)" stroke-width="13" stroke-linejoin="round"/>
+<!-- Glasfuss / Bodenlinie -->
+<path d="M388 876 C420 892 466 900 512 900 C558 900 604 892 636 876" fill="none" stroke="url(#gold)" stroke-width="10" stroke-linecap="round" opacity="0.75"/>
+<!-- Schaumkrone: ruhig, zwei sanfte Bögen -->
+<path d="M352 372 C352 328 396 300 452 304 C470 272 540 264 566 296 C622 284 672 316 672 366 C672 370 671 372 670 372 Z" fill="#f5ead4"/>
+<ellipse cx="452" cy="306" rx="22" ry="14" fill="#ffffff" opacity="0.5"/>
+<ellipse cx="566" cy="298" rx="16" ry="10" fill="#ffffff" opacity="0.45"/>
+<!-- Promille-Signet: dünner Goldring -->
+<circle cx="740" cy="292" r="118" fill="#0d0906" fill-opacity="0.92" stroke="url(#gold)" stroke-width="9"/>
+<text x="740" y="344" text-anchor="middle" font-family="Georgia, 'Times New Roman', serif" font-weight="700" font-size="150" fill="#e9cd8d">&#8240;</text>
+</g>
 </svg>

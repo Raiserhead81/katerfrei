@@ -78,6 +78,8 @@
           <button type="button" data-v="120" role="radio" aria-checked="false">kurz &middot; 2 h</button>
           <button type="button" data-v="240" role="radio" aria-checked="true">normal &middot; 4 h</button>
           <button type="button" data-v="360" role="radio" aria-checked="false">lang &middot; 6 h</button>
+          <button type="button" data-v="540" role="radio" aria-checked="false">Rieschabend &middot; 9 h</button>
+          <button type="button" data-v="720" role="radio" aria-checked="false">Marathon &middot; 12 h</button>
         </div>
       </div>
       <div class="feld">
@@ -122,6 +124,17 @@
 
     <h2 class="frasse klein">Dein Trinkplan</h2>
     <ol class="plan" id="plan-liste"></ol>
+    <div class="live-box" id="live-box" hidden>
+      <p class="live-titel">Live am Abend</p>
+      <p class="live-rest">Vom Plan uebrig: <b id="live-rest"></b></p>
+      <p class="live-wasser" id="live-wasser" hidden></p>
+      <p class="live-warn" id="live-warn" hidden></p>
+      <div class="live-btns">
+        <button type="button" id="btn-plus">+1 getrunken</button>
+        <button type="button" id="btn-wasser">+ Wasser</button>
+        <button type="button" id="btn-live-reset" hidden>Neu zaehlen</button>
+      </div>
+    </div>
     <div class="stoppschild" id="out-stopp"></div>
 
     <h2 class="frasse klein">Damit es morgen wirklich gut geht</h2>

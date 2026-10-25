@@ -291,3 +291,15 @@ body::before {
 .rang-spruch { font-size: 13px; color: var(--muted); font-style: italic; }
 #btn-share { animation: none; }
 .rang-fakten { font-family: var(--mono); font-size: 11.5px; color: var(--muted); margin: -4px 0 12px; letter-spacing: 0.03em; }
+
+/* Live-Tracking am Abend (+1 / Wasser) */
+.live-box { margin: 14px 0 4px; padding: 14px; border: 1px solid var(--line); border-radius: 12px; background: var(--panel); }
+.live-box .live-titel { font-size: 12px; font-weight: 700; letter-spacing: .6px; text-transform: uppercase; color: var(--muted); margin: 0 0 6px; }
+.live-box .live-rest { margin: 0 0 10px; font-size: 16px; color: var(--text); }
+.live-box .live-wasser { margin: 0 0 8px; font-size: 14px; color: var(--muted); }
+.live-box .live-warn { margin: 0 0 8px; font-size: 15px; font-weight: 700; color: #c0392b; }
+.live-btns { display: flex; gap: 8px; flex-wrap: wrap; }
+.live-btns button { flex: 1; min-width: 110px; padding: 10px 12px; border-radius: 10px; border: 1px solid var(--amber); background: var(--panel2); color: var(--text); font-family: var(--sans); font-size: 15px; font-weight: 600; cursor: pointer; transition: all .18s; }
+.live-btns button:hover { border-color: var(--amber-dunkel); }
+.live-btns #btn-wasser { border-color: #3b82c4; }
+.live-btns #btn-live-reset { flex: 0 0 auto; min-width: 0; border-color: var(--line); color: var(--muted); font-weight: 500; }

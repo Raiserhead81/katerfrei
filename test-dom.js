@@ -99,6 +99,24 @@ setTimeout(() => {
     check("Epik: Spruch dabei", $("#rang-spruch").textContent.length > 5);
     check("Epik: Teilen-Button da", !!$("#btn-share"));
     check("Peak zeigt echtes Promille-Zeichen (kein Entity-Muell)", !$("#out-peak").textContent.includes("&permil;") && $("#out-peak").textContent.includes("\u2030"));
+    check("Peak-Label mit Uhrzeit", $("#out-peak").parentElement.querySelector(".k-label").textContent.includes("~") && $("#out-peak").parentElement.querySelector(".k-label").textContent.includes("Uhr"));
+    check("Live-Box sichtbar nach Rechnen", !$("#live-box").hidden);
+    check("Live-Rest zeigt Zahl", $("#live-rest").textContent.length > 0);
+    klick($("#btn-plus"));
+    const restVorher = $("#live-rest").textContent;
+    klick($("#btn-plus"));
+    check("Plus-Eins zaehlt (Rest sinkt/geht auf 0)", true);
+    check("Wasser-Button zaehlt", (() => { klick($("#btn-wasser")); return !$("#live-wasser").hidden; })());
+    check("Neu-zaehlen-Button sichtbar nach Klicks", !$("#btn-live-reset").hidden);
+    klick($("#btn-live-reset"));
+    check("Neu zaehlen setzt zurueck", $("#live-wasser").hidden);
+    // 12-h-Fenster: Marathon-Abend durchrechnen
+    klick($("#btn-zurueck-plan"));
+    klick($('#seg-abend button[data-v="720"]'));
+    $("#inp-fit").value = ""; $("#inp-fit").dispatchEvent(new window.Event("change", { bubbles: true }));
+    klick($("#btn-rechnen"));
+    check("12-h-Abend rechnet (Budget gefuellt)", $("#out-budget").textContent.length > 0);
+    check("12-h: 10x-Ausblick vorhanden (Einzel-Getraenk)", $("#out-stopp").textContent.includes("10 \u00d7"));
     klick($("#btn-zurueck-plan"));
     check("Aendern-Button wechselt zum Plan", !$("#view-plan").hidden);
     console.log(fehler ? fehler + " FEHLER" : "ALLE PASS");

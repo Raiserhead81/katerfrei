@@ -131,6 +131,13 @@ function initPlan() {
 
   $("#btn-edit-profil").addEventListener("click", () => zeige("view-setup"));
   $("#btn-rechnen").addEventListener("click", () => { berechnenUndZeigen(); });
+  $("#btn-plus").addEventListener("click", () => { if (!aktuellerPlan) return; live.genossen++; liveAnzeigen();
+    const rest = aktuellerPlan.anzahl - live.genossen;
+    if (rest === 0) $("#live-warn").textContent = "";
+    if (rest < 0) { const w = $("#live-warn"); w.hidden = false; w.textContent = "Noch einer? Peak " + ($("#live-box").dataset.plus1Peak || "?") + " - aber lass dir das morgen nicht gefallen. Wasser!"; }
+  });
+  $("#btn-wasser").addEventListener("click", () => { if (!aktuellerPlan) return; live.wasser++; liveAnzeigen(); });
+  $("#btn-live-reset").addEventListener("click", () => { live = { genossen: 0, wasser: 0 }; liveAnzeigen(); });
   $("#btn-zurueck-plan").addEventListener("click", () => zeige("view-plan"));
   $("#btn-von-vorn").addEventListener("click", () => neuerAbend());
   $("#btn-share").addEventListener("click", teilePlan);
@@ -153,6 +160,7 @@ function teilePlan() {
 
 function neuerAbend() {
   state.abend = { getraenke: ["bier"], start: "", abendMin: 240, empfind: state.abend.empfind, fit: "" };
+  aktuellerPlan = null; live = { genossen: 0, wasser: 0 };
   window.document.querySelectorAll(".getraenk").forEach((b) => b.setAttribute("aria-checked", String(b.dataset.id === "bier")));
   $("#inp-start").value = defaultStart();
   $("#inp-fit").value = "";
@@ -184,6 +192,50 @@ function abendDauerMin() {
 }
 
 // ---------- Berechnung + Ergebnis ----------
+
+// N Drinks gleichmaessig uebers Fenster verteilen und durchrechnen
+// (gleiche Verteilung wie planBerechnen - fuer "noch eins?" und "10 x ?"-Ausblicke)
+function simuliereN(n, getraenke, geschlecht, gewicht, trinkMin, schlafMin) {
+  const items = [];
+  for (let i = 0; i < n; i++) {
+    const g = getraenke[i % getraenke.length];
+    items.push({ t: (trinkMin / n) * i / 60, getraenk: g, gramm: alkoholGramm(g.ml, g.vol) });
+  }
+  const gesamtH = (trinkMin + schlafMin) / 60 + 12; // 12 h Reserve hinter dem Aufstehen
+  const kurve = bacVerlauf(items.map((x) => x.t), items.map((x) => x.gramm), geschlecht, gewicht, gesamtH);
+  let peak = 0, peakT = 0;
+  for (const p of kurve) if (p.bac > peak) { peak = p.bac; peakT = p.t; }
+  const wakeIdx = Math.round(((trinkMin + schlafMin) / 60) / (5 / 60));
+  const wake = kurve[Math.min(wakeIdx, kurve.length - 1)].bac;
+  let ns = 0;
+  for (const p of kurve) if (p.bac > WAKE_TOLERANZ) ns = p.t;
+  return { peak, peakT, wake, nuechternStd: ns, gramm: items.reduce((a, x) => a + x.gramm, 0) };
+}
+
+// Live-Tracking am Abend: wie viel vom Plan ist noch uebrig?
+let aktuellerPlan = null;
+let live = { genossen: 0, wasser: 0 };
+
+function liveAnzeigen() {
+  const box = $("#live-box");
+  if (!aktuellerPlan) { box.hidden = true; return; }
+  box.hidden = false;
+  const rest = aktuellerPlan.anzahl - live.genossen;
+  const restEl = $("#live-rest");
+  if (rest > 1) restEl.textContent = rest + " Drinks";
+  else if (rest === 1) restEl.textContent = "1 Drink - danach Schluss";
+  else if (rest === 0) restEl.textContent = "0 - Plan ist voll, feier dich selbst";
+  else restEl.textContent = Math.abs(rest) + " ueber Plan";
+  $("#live-wasser").hidden = live.wasser === 0;
+  if (live.wasser > 0) $("#live-wasser").textContent = "Wasser heute: " + live.wasser + (live.wasser >= 3 ? " - stark!" : " - mehr davon");
+  const warn = $("#live-warn");
+  warn.hidden = rest >= 0;
+  if (rest < 0) warn.textContent = "Plan ueberschritten - Wasser ist jetzt dein bester Freund, morgen wird hart.";
+  $("#btn-live-reset").hidden = live.genossen === 0 && live.wasser === 0;
+  const name = aktuellerPlan.items.length ? aktuellerPlan.items[0].getraenk.name : "Drink";
+  $("#btn-plus").textContent = aktuellerPlan && new Set(aktuellerPlan.items.map((x) => x.getraenk.id)).size === 1 ? "+1 " + name : "+1 Drink";
+}
+
 function berechnenUndZeigen() {
   const getraenke = GETRAENKE.filter((g) => state.abend.getraenke.includes(g.id));
   const empfind = EMPFINDLICHKEIT.find((e) => e.id === state.abend.empfind);
@@ -208,12 +260,14 @@ function berechnenUndZeigen() {
     $("#out-peak").textContent = "-"; $("#out-gramm").textContent = "0 g"; $("#out-wake").textContent = "--:--";
     $("#plan-liste").innerHTML = "";
     $("#out-stopp").innerHTML = "<b>Ohne Alkohol</b> wird das morgen ein guter Morgen - und du puenktlich fit.";
+    aktuellerPlan = null; $("#live-box").hidden = true;
   } else if (!plan) {
     $("#out-budget").innerHTML = "Heiter bleiben.";
     $("#out-budget-sub").textContent = "So eng wie heute Abend passt kein Drink rein, ohne morgen zu leiden.";
     $("#out-peak").textContent = "-"; $("#out-gramm").textContent = "0 g"; $("#out-wake").textContent = "--:--";
     $("#plan-liste").innerHTML = "";
     $("#out-stopp").innerHTML = "<b>Ohne Alkohol</b> wird das morgen ein guter Morgen.";
+    aktuellerPlan = null; $("#live-box").hidden = true;
   } else {
     // Budget-Zeile: "3 &times; Bier" oder "4 Drinks" + Mix-Aufschloesselung
     const counts = [];
@@ -233,6 +287,22 @@ function berechnenUndZeigen() {
     const nuechtern = minZuHM(start + Math.ceil(plan.nuechternStd * 60 / 5) * 5);
     $("#out-wake").textContent = "~" + nuechtern;
 
+    // Peak MIT Uhrzeit ins Kennzahlen-Label
+    let peakT = 0;
+    for (const p of plan.kurve) if (p.bac >= plan.peakPromille - 1e-9) { peakT = p.t; break; }
+    const peakUhr = minZuHM((start + Math.round(peakT * 60)) % 1440);
+    peakEl.parentElement.querySelector(".k-label").textContent = "Hoehepunkt ~" + peakUhr + " Uhr";
+
+    // Warnung: noch EINEN ueber den Plan?
+    const plus1 = simuliereN(plan.anzahl + 1, getraenke, state.profil.geschlecht, state.profil.gewicht, trink, schlafMin);
+    $("#live-box").dataset.plus1Peak = plus1.peak.toFixed(2).replace(".", ",") + "\u2030";
+    $("#live-box").dataset.plus1Wake = plus1.wake.toFixed(2).replace(".", ",") + "\u2030";
+
+    // Live-Tracking aktivieren (frisch zaehlen)
+    aktuellerPlan = plan;
+    live = { genossen: 0, wasser: 0 };
+    liveAnzeigen();
+
     // Plan-Liste
     const ul = $("#plan-liste");
     ul.innerHTML = "";
@@ -251,6 +321,13 @@ function berechnenUndZeigen() {
     $("#out-stopp").innerHTML = fitMin
       ? "Um <b>" + letzte + " Uhr</b> ist der letzte Drink fertig - danach Feierabend. Dein Fit-Ziel um <b>" + minZuHM(fitMin) + " Uhr</b> sitzt: spaetestens um <b>" + nuechtern + " Uhr</b> bist du komplett nuechtern."
       : "Um <b>" + letzte + " Uhr</b> ist der letzte Drink fertig - danach Feierabend. Egal, wann du ins Bett kommst und wie lange du schlaefst: um <b>" + nuechtern + " Uhr</b> bist du komplett nuechtern.";
+
+    // Ausblick: "und wenn ich 10 trinken will?" (nur bei Einzelgetraenk, sonst verwirrt es)
+    if (new Set(getraenke.map((g) => g.id)).size === 1 && plan.anzahl < 10) {
+      const zehn = simuliereN(10, getraenke, state.profil.geschlecht, state.profil.gewicht, trink, schlafMin);
+      const zUhr = minZuHM((start + Math.ceil(zehn.nuechternStd * 60 / 5) * 5) % 1440);
+      $("#out-stopp").insertAdjacentHTML("beforeend", '<p class="mehr-line">Du willst 10 &times; ' + getraenke[0].name + '? Geht auch - Peak ' + zehn.peak.toFixed(1).replace(".", ",") + "\u2030, aber nuechtern erst ~" + zUhr + " Uhr und morgen zaeh. Deine Zahl oben ist die, die sich Morgen-du merken wird.</p>");
+    }
   }
   zeichneKurve(plan, start, trink, schlafMin, !!fitMin);
   speichern();
