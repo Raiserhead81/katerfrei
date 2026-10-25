@@ -98,6 +98,7 @@ setTimeout(() => {
     check("Epik: Rang nennt Peak-Zahl + Limit", !$("#rang-fakten").hidden && /Peak \d,\d\d\u2030/.test($("#rang-fakten").textContent) && $("#rang-fakten").textContent.includes("unter deinem Limit"));
     check("Epik: Spruch dabei", $("#rang-spruch").textContent.length > 5);
     check("Epik: Teilen-Button da", !!$("#btn-share"));
+    check("Peak zeigt echtes Promille-Zeichen (kein Entity-Muell)", !$("#out-peak").textContent.includes("&permil;") && $("#out-peak").textContent.includes("\u2030"));
     klick($("#btn-zurueck-plan"));
     check("Aendern-Button wechselt zum Plan", !$("#view-plan").hidden);
     console.log(fehler ? fehler + " FEHLER" : "ALLE PASS");

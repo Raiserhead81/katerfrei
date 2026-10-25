@@ -227,8 +227,8 @@ function berechnenUndZeigen() {
     const erster = minZuHM(start + Math.round(plan.items[0].t * 60));
     $("#out-budget-sub").innerHTML = (misch ? counts.join(" &middot; ") + " - d" : "D") + "ein erster um " + erster + " Uhr, und du bist morgen frisch.";
     const peakEl = $("#out-peak"), grammEl = $("#out-gramm");
-    peakEl.innerHTML = "0&permil;"; grammEl.textContent = "0 g";
-    countUp(peakEl, plan.peakPromille, 900, (v) => v.toFixed(1).replace(".", ",") + "&permil;");
+    peakEl.textContent = "0\u2030"; grammEl.textContent = "0 g";
+    countUp(peakEl, plan.peakPromille, 900, (v) => v.toFixed(1).replace(".", ",") + "\u2030");
     countUp(grammEl, plan.grammGesamt, 900, (v) => Math.round(v) + " g");
     const nuechtern = minZuHM(start + Math.ceil(plan.nuechternStd * 60 / 5) * 5);
     $("#out-wake").textContent = "~" + nuechtern;
