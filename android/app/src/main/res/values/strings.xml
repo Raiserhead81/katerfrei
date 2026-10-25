@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Katerfrei</string>
+    <string name="title_activity_main">Katerfrei</string>
+    <string name="package_name">de.gemivo.katerfrei</string>
+    <string name="custom_url_scheme">de.gemivo.katerfrei</string>
+</resources>

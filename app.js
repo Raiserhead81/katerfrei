@@ -6,7 +6,7 @@ const LS_KEY = "katerfrei-v2";
 
 const state = {
   profil: { geschlecht: null, alter: 30, gewicht: 75 },
-  abend: { getraenke: ["bier"], start: "", abendMin: 240, empfind: "normal" },
+  abend: { getraenke: ["bier"], start: "", abendMin: 240, empfind: "normal", fit: "" },
 };
 
 // ---------- Getraenk-Icons (inline SVG) ----------
@@ -121,6 +121,11 @@ function initPlan() {
     state.abend.start = e.target.value;
     speichern();
   });
+  $("#inp-fit").value = state.abend.fit || "";
+  $("#inp-fit").addEventListener("change", (e) => {
+    state.abend.fit = e.target.value;
+    speichern();
+  });
   segmentLogik("#seg-abend", String(state.abend.abendMin), (v) => { state.abend.abendMin = +v; speichern(); });
   segmentLogik("#seg-empfind", state.abend.empfind, (v) => { state.abend.empfind = v; speichern(); });
 
@@ -140,14 +145,21 @@ function minZuHM(min) { min = ((min % 1440) + 1440) % 1440; return String(Math.f
 
 function abendDauerMin() {
   const start = hmZuMin($("#inp-start").value);
-  return { start, trink: state.abend.abendMin };
+  let schlafMin = SCHLAF_ANNAHME_H * 60; // Worst-Case-Nacht, falls kein Fit-Ziel
+  let fitMin = 0;
+  if (state.abend.fit) {
+    fitMin = hmZuMin(state.abend.fit);
+    while (fitMin <= start + state.abend.abendMin) fitMin += 1440; // naechster Morgen
+    schlafMin = fitMin - start - state.abend.abendMin;
+  }
+  return { start, trink: state.abend.abendMin, schlafMin, fitMin };
 }
 
 // ---------- Berechnung + Ergebnis ----------
 function berechnenUndZeigen() {
   const getraenke = GETRAENKE.filter((g) => state.abend.getraenke.includes(g.id));
   const empfind = EMPFINDLICHKEIT.find((e) => e.id === state.abend.empfind);
-  const { start, trink } = abendDauerMin();
+  const { start, trink, schlafMin, fitMin } = abendDauerMin();
   const plan = planBerechnen({
     geschlecht: state.profil.geschlecht,
     gewicht: state.profil.gewicht,
@@ -155,12 +167,19 @@ function berechnenUndZeigen() {
     getraenke,
     peakLimit: empfind.peak,
     grammGesamtLimit: state.profil.gewicht * empfind.gProKg,
+    schlafMin,
   });
 
   zeige("view-ergebnis");
   glaeserBuehne(plan);
-  wissenschaftFuellen(plan, getraenke, empfind);
-  if (!plan) {
+  wissenschaftFuellen(plan, getraenke, empfind, { start, trink, schlafMin, fitMin });
+  if (!plan && schlafMin < 30) {
+    $("#out-budget").innerHTML = "Zu knapp.";
+    $("#out-budget-sub").textContent = "Zwischen Feierabend und deinem Fit-Ziel um " + minZuHM(fitMin) + " Uhr bleibt keine Zeit zum Abbauen - heute wird das nix mit Alkohol.";
+    $("#out-peak").textContent = "-"; $("#out-gramm").textContent = "0 g"; $("#out-wake").textContent = "--:--";
+    $("#plan-liste").innerHTML = "";
+    $("#out-stopp").innerHTML = "<b>Ohne Alkohol</b> wird das morgen ein guter Morgen - und du puenktlich fit.";
+  } else if (!plan) {
     $("#out-budget").innerHTML = "Heiter bleiben.";
     $("#out-budget-sub").textContent = "So eng wie heute Abend passt kein Drink rein, ohne morgen zu leiden.";
     $("#out-peak").textContent = "-"; $("#out-gramm").textContent = "0 g"; $("#out-wake").textContent = "--:--";
@@ -190,20 +209,25 @@ function berechnenUndZeigen() {
     plan.items.forEach((it, i) => {
       const li = document.createElement("li");
       const uhr = minZuHM(start + Math.round(it.t * 60));
+      const sub = i === 0 ? "vorher richtig etwas essen"
+        : i === plan.items.length - 1 ? "danach Feierabend - Wasser & Salzstangen ans Bett"
+        : "dazwischen ruhig mal ein alkoholfreies Getraenk";
       li.innerHTML = '<span class="p-zeit">' + uhr + "</span>" +
-        '<span class="p-was"><b>' + it.getraenk.name + (i === 0 ? " - langsam antrinken" : "") + "</b><span>dazu ein grosses Glas Wasser</span></span>" +
+        '<span class="p-was"><b>' + it.getraenk.name + (i === 0 ? " - langsam antrinken" : "") + "</b><span>" + sub + "</span></span>" +
         '<span class="p-nr">' + (i + 1) + "/" + plan.anzahl + "</span>";
       ul.appendChild(li);
     });
     const letzte = minZuHM(start + Math.round(plan.items[plan.items.length - 1].t * 60));
-    $("#out-stopp").innerHTML = "Um <b>" + letzte + " Uhr</b> ist der letzte Drink fertig (" + plan.items[plan.items.length - 1].getraenk.name + "). Danach nur Wasser - und egal, wann du ins Bett kommst: um <b>" + nuechtern + " Uhr</b> bist du komplett nuechtern.";
+    $("#out-stopp").innerHTML = fitMin
+      ? "Um <b>" + letzte + " Uhr</b> ist der letzte Drink fertig - danach Feierabend. Dein Fit-Ziel um <b>" + minZuHM(fitMin) + " Uhr</b> sitzt: spaetestens um <b>" + nuechtern + " Uhr</b> bist du komplett nuechtern."
+      : "Um <b>" + letzte + " Uhr</b> ist der letzte Drink fertig - danach Feierabend. Egal, wann du ins Bett kommst und wie lange du schlaefst: um <b>" + nuechtern + " Uhr</b> bist du komplett nuechtern.";
   }
-  zeichneKurve(plan, start, trink);
+  zeichneKurve(plan, start, trink, schlafMin, !!fitMin);
   speichern();
 }
 
 // ---------- BAC-Kurve (SVG) ----------
-function zeichneKurve(plan, startMin, trinkMin, schlafMin = SCHLAF_ANNAHME_H * 60) {
+function zeichneKurve(plan, startMin, trinkMin, schlafMin = SCHLAF_ANNAHME_H * 60, fitAktiv = false) {
   const svg = $("#kurve");
   const W = 640, H = 240, PAD_L = 40, PAD_R = 14, PAD_T = 18, PAD_B = 26;
   const gesamtStd = (trinkMin + schlafMin) / 60;
@@ -224,7 +248,7 @@ function zeichneKurve(plan, startMin, trinkMin, schlafMin = SCHLAF_ANNAHME_H * 6
   // Zeitlabels
   g += '<text x="' + x(0) + '" y="' + (H - 8) + '" fill="#b09878" font-size="10" font-family="IBM Plex Mono">' + minZuHM(startMin) + "</text>" +
     '<text x="' + x(trinkMin / 60) + '" y="' + (H - 8) + '" fill="#b09878" font-size="10" text-anchor="middle" font-family="IBM Plex Mono">Feierabend</text>' +
-    '<text x="' + (W - PAD_R) + '" y="' + (H - 8) + '" fill="#8fbf6f" font-size="10" text-anchor="end" font-family="IBM Plex Mono">' + minZuHM(startMin + trinkMin + schlafMin) + " nüchtern</text>";
+    '<text x="' + (W - PAD_R) + '" y="' + (H - 8) + '" fill="#8fbf6f" font-size="10" text-anchor="end" font-family="IBM Plex Mono">' + minZuHM(startMin + trinkMin + schlafMin) + (fitAktiv ? " fit" : " nüchtern") + "</text>";
   // Mond + Sonne
   g += '<text x="' + (x(trinkMin / 60) + 12) + '" y="' + (PAD_T + 12) + '" font-size="13">🌙</text>' +
     '<text x="' + (W - PAD_R - 14) + '" y="' + (PAD_T + 12) + '" font-size="13">☀️</text>';
@@ -307,7 +331,7 @@ function glaeserBuehne(plan) {
 }
 
 // ---------- Wissenschaft: Herleitung mit eingesetzten Werten ----------
-function wissenschaftFuellen(plan, getraenke, empfind) {
+function wissenschaftFuellen(plan, getraenke, empfind, dauer) {
   const p = state.profil;
   const r = verteilFaktor(p.geschlecht);
   const kw = p.gewicht * r;                       // Koerperwasser in kg
@@ -330,10 +354,13 @@ function wissenschaftFuellen(plan, getraenke, empfind) {
     "Alkoholmenge = Volumen &times; Vol.% &times; Dichte 0,789 g/ml - pro Getraenk deiner Auswahl:" +
     "<br>" + drinkTxt;
 
-  $("#wis-abbau").innerHTML =
-    "Dein Koerper baut Alkohol nahezu konstant ab - im Mittel <b>0,15&permil; pro Stunde</b> (Literatur-Spanne 0,10-0,20&permil;/h, Jones 2010)." +
-    "<br>Weil niemand vorher weiss, wann er ins Bett faellt, rechnet der Plan mit der <b>Worst-Case-Nacht</b>: alles, was du trinkst, ist <b>5 h nach deinem letzten Drink</b> komplett abgebaut (" +
-    "0,15&permil;/h &times; 5 h = 0,75&permil; Reserve) - egal, wann du pennt und wie lange du schlaefst.";
+  const abbauTxt = dauer && dauer.fitMin
+    ? "Dein Koerper baut Alkohol nahezu konstant ab - im Mittel <b>0,15&permil; pro Stunde</b> (Literatur-Spanne 0,10-0,20&permil;/h, Jones 2010)." +
+      "<br>Dein Fit-Ziel: Feierabend um <b>" + minZuHM(dauer.start + dauer.trink) + " Uhr</b>, fit um <b>" + minZuHM(dauer.fitMin) + " Uhr</b> - das sind <b>" + z((dauer.schlafMin / 60).toFixed(1)) + " h</b> Abbauleistung, also bis zu <b>" + z((ABBAU * dauer.schlafMin / 60).toFixed(2)) + "&permil;</b> Reserve fuer die Nacht. Genauso hat der Plan gerechnet."
+    : "Dein Koerper baut Alkohol nahezu konstant ab - im Mittel <b>0,15&permil; pro Stunde</b> (Literatur-Spanne 0,10-0,20&permil;/h, Jones 2010)." +
+      "<br>Weil niemand vorher weiss, wann er ins Bett faellt, rechnet der Plan ohne Fit-Ziel mit der <b>Worst-Case-Nacht</b>: alles, was du trinkst, ist <b>5 h nach deinem letzten Drink</b> komplett abgebaut (0,15&permil;/h &times; 5 h = 0,75&permil; Reserve) - egal, wann du pennt und wie lange du schlaefst.";
+  $("#wis-abbau").innerHTML = abbauTxt +
+    "<br>Und egal, wie lang die Nacht ist: Alkohol im Blut waehrend des Schlafs unterdrueckt den REM-Schlaf und zerhackt die Schlafphasen - du wachst auch ohne Kater zerrupft auf (Ebrahim et al. 2013). N&uuml;chtern einschlafen ist deshalb doppelt wertvoll.";
 
   $("#wis-grenzen").innerHTML =
     "Der Plan haelt <b>drei</b> medizinische Grenzen gleichzeitig ein:" +

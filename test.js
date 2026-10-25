@@ -38,4 +38,13 @@ console.log(grenz ? `Kurz-Fall: ${grenz.anzahl} Shot(s)` : 'Kurz-Fall: kein Plan
 const single = c.planBerechnen({ geschlecht: 'm', gewicht: 80, trinkMin: 240, getraenk: G.bier, peakLimit: EMP.normal.peak, grammGesamtLimit: 80 * EMP.normal.gProKg });
 console.log(single && single.schlafMin === c.SCHLAF_ANNAHME_H * 60 && single.anzahl >= 1 ? 'PASS' : 'FAIL', '| Einzel-Getraenk + schlafMin-Default', single ? `(${single.anzahl} Bier)` : '');
 if (!single || single.schlafMin !== c.SCHLAF_ANNAHME_H * 60) fail++;
+// Fit-Ziel: kuerzeres Abbaubudget schraenkt ein, laengeres erweitert nie ueber Gesamtlimit
+const fBase = { geschlecht: 'm', gewicht: 80, trinkMin: 240, getraenke: [G.bier], peakLimit: EMP.normal.peak, grammGesamtLimit: 80 * EMP.normal.gProKg };
+const fDef = c.planBerechnen({ ...fBase, schlafMin: 300 });
+const fKurz = c.planBerechnen({ ...fBase, schlafMin: 120 });
+const fLang = c.planBerechnen({ ...fBase, schlafMin: 480 });
+console.log(fKurz.anzahl < fDef.anzahl ? 'PASS' : 'FAIL', '| Fit-Ziel kurz (2h Budget):', fKurz.anzahl, 'statt', fDef.anzahl);
+if (!(fKurz.anzahl < fDef.anzahl)) fail++;
+console.log(fLang.anzahl >= fDef.anzahl ? 'PASS' : 'FAIL', '| Fit-Ziel lang (8h Budget):', fLang.anzahl, '>=', fDef.anzahl);
+if (!(fLang.anzahl >= fDef.anzahl)) fail++;
 process.exit(fail ? 1 : 0);

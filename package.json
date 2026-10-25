@@ -1,16 +1,15 @@
 {
   "name": "katerfrei",
-  "version": "1.0.0",
-  "description": "",
-  "main": "app.js",
+  "version": "3.0.0",
+  "private": true,
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "build:www": "cp index.html app.js calculator.js style.css www/",
+    "test": "node test.js && node test-dom.js"
   },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
-  "type": "commonjs",
-  "dependencies": {
+  "devDependencies": {
+    "@capacitor/android": "^8.5.3",
+    "@capacitor/cli": "^8.5.3",
+    "@capacitor/core": "^8.5.3",
     "jsdom": "^29.1.1"
   }
 }

@@ -65,6 +65,28 @@ ein grosses Glas Wasser pro Drink.
 - `index.html` / `style.css` - dunkle Bar-Aesthetik (Fraunces + IBM Plex)
 - `test.js` - Rechen-Tests (node test.js)
 - `test-dom.js` - jsdom-Smoke-Test des echten Klickpfads (node test-dom.js)
+- `android/` - Capacitor-Android-Wrapper (Offline-APK, alle Web-Assets eingebettet)
+- `icon.svg` - App-Icon-Quelle (Martiniglas + 06:00-Uhr), via qlmanage/sips in mipmap-*
+
+## v3: Fit-Ziel statt fester 5h
+- Optionales Feld "Morgen fit bis" (z.B. 06:00): das Abbaubudget ergibt sich aus
+  Feierabend minus Schlafzeit statt der festen 5h-Annahme. Kuerzeres Budget = weniger Drinks.
+- Ohne Eingabe gilt weiter der Worst Case (5h Schlaf, 0,15 Promille/h).
+- Wissenschafts-Sektion rechnet das Budget live vor (Fit-Ziel: Feierabend/fit um/Reserve-Promille).
+- Tipps erweitert: Elektrolyte, Paracetamol-Warnung (Leber + Alkohol), REM-Schlaf (Ebrahim 2013),
+  Aspirin-Einordnung (Rohsenow 2010: gegen Entzuendung, nicht gegen Katerursachen).
+
+## APK bauen
+    brew install openjdk@21           # Capacitor 7 braucht Java 21
+    npm i                             # capacitor + jsdom
+    npm run build:www                 # Web-Assets nach www/ kopieren
+    npx cap sync android
+    cd android && JAVA_HOME=/opt/homebrew/opt/openjdk@21/libexec/openjdk.jdk/Contents/Home ./gradlew assembleRelease
+
+Signierung: android/keystore.properties + katerfrei.keystore (nicht im Repo).
+APK liegt dann in android/app/build/outputs/apk/release/.
+Deploy als https://katerfrei.gemivo.de/katerfrei.apk (nginx-Location mit eigenem MIME-Typ,
+ siehe deploy/katerfrei.gemivo.de.conf).
 
 ## Grenzen des Modells (ehrlich)
 - Individuelle Streuung der Eliminationsrate +/-20 % ist normal.
@@ -76,4 +98,6 @@ ein grosses Glas Wasser pro Drink.
 
 ## Deploy
 Statisch nach /var/www/katerfrei auf gemivo (nginx katerfrei.gemivo.de),
-siehe Skill gemivo-deploy.
+siehe Skill gemivo-deploy. APK nach /var/www/katerfrei/katerfrei.apk.
+Wichtig: Der nginx-Symlink heisst /etc/nginx/sites-enabled/katerfrei.gemivo.de
+(ohne .conf) - Config nach sites-available/katerfrei.gemivo.de schreiben.

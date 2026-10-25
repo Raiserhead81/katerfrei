@@ -63,8 +63,18 @@ setTimeout(() => {
   check("Wissenschaft: Drinkliste mit Spruengen", $("#wis-drink").textContent.includes("Kurzer") && $("#wis-drink").textContent.includes("+"));
   check("Wissenschaft: Worst-Case 5 h erklaert", $("#wis-abbau").textContent.includes("5 h"));
   check("Wissenschaft: Grenzen 1-3", $("#wis-grenzen").textContent.includes("drei"));
-  check("Quellen vorhanden (6)", window.document.querySelectorAll(".quellen li").length === 6);
+  check("Quellen vorhanden (8)", window.document.querySelectorAll(".quellen li").length === 8);
   check("localStorage v2 gespeichert", !!window.localStorage.getItem("katerfrei-v2"));
+
+  // 3b) Fit-Ziel 06:00 -> Stopp-Text + dynamische Wissenschaft + Kurve
+  klick($("#btn-zurueck-plan"));
+  $("#inp-fit").value = "06:00"; $("#inp-fit").dispatchEvent(new window.Event("change", { bubbles: true }));
+  klick($("#btn-rechnen"));
+  setTimeout(() => {
+    check("Fit-Ziel im Stopp-Text (06:00)", $("#out-stopp").textContent.includes("06:00"));
+    check("Wissenschaft: Fit-Ziel-Aufstellung", $("#wis-abbau").textContent.includes("Fit-Ziel") && $("#wis-abbau").textContent.includes("fit um"));
+    check("Wissenschaft: REM-Schlaf-Hinweis", $("#wis-abbau").textContent.includes("REM"));
+    check("Kurve endet auf fit-Label", $("#kurve").textContent.includes("fit"));
 
   // 4) Grenzfall: sehr kurzer Abend + zart -> evtl. kein/mini Plan
   klick($("#btn-zurueck-plan"));
@@ -77,4 +87,5 @@ setTimeout(() => {
     console.log(fehler ? fehler + " FEHLER" : "ALLE PASS");
     process.exit(fehler ? 1 : 0);
   }, 100);
+}, 100);
 }, 100);

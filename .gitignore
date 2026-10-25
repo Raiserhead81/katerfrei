@@ -1,2 +1,9 @@
 node_modules/
 package-lock.json
+www/
+katerfrei.keystore
+*.jks
+android/keystore.properties
+*.apk
+icon-512.png
+.DS_Store
